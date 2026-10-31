@@ -1,0 +1,22 @@
+[
+  {
+    "name": "web-app",
+    "service": "web-app",
+    "url": "https://origin.solarianetwork.site/"
+  },
+  {
+    "name": "core",
+    "service": "core",
+    "url": "https://core.solarianetwork.site/actuator/health"
+  },
+  {
+    "name": "auth",
+    "service": "auth",
+    "url": "https://auth.solarianetwork.site/actuator/health"
+  },
+  {
+    "name": "messenger",
+    "service": "messenger",
+    "url": "https://messenger.solarianetwork.site/actuator/health"
+  }
+]

@@ -162,3 +162,37 @@ describe("preview", () => {
     expect(resolved.action).toBe("would_record_end");
   });
 });
+
+describe("heartbeat and monitor", () => {
+  const monitor = () => ({
+    heartbeat: vi.fn(async () => undefined),
+    run: vi.fn(async () => ({
+      heartbeat: "ok" as const,
+      clusterActive: true,
+      probes: [],
+      opened: [],
+      resolved: [],
+    })),
+  });
+  it("records a beat only with the token", async () => {
+    const api = monitor();
+    const app = createApp(vi.fn(), api);
+    const refused = await app.request("/heartbeat", { method: "POST" }, env);
+    expect(refused.status).toBe(401);
+    expect(api.heartbeat).not.toHaveBeenCalled();
+    const accepted = await post(app, "/heartbeat", {});
+    expect(accepted.status).toBe(200);
+    expect(api.heartbeat).toHaveBeenCalledTimes(1);
+  });
+  it("runs the monitor on demand only with the token", async () => {
+    const api = monitor();
+    const app = createApp(vi.fn(), api);
+    expect(
+      (await app.request("/monitor/run", { method: "POST" }, env)).status,
+    ).toBe(401);
+    const response = await post(app, "/monitor/run", {});
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ heartbeat: "ok" });
+    expect(api.run).toHaveBeenCalledTimes(1);
+  });
+});
