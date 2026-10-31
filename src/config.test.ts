@@ -39,3 +39,30 @@ describe("config", () => {
     });
   });
 });
+
+describe("e-mail config", () => {
+  const email = {
+    EMAIL_API_URL: "https://email.example.test/",
+    EMAIL_SERVICE_KEY: "key",
+    ALERT_EMAIL_TO: "a@example.com, b@example.com;c@example.com",
+  };
+  it("is off unless the three values are valid", () => {
+    expect(alertsConfig().email).toBeUndefined();
+    expect(
+      alertsConfig({ ...email, EMAIL_SERVICE_KEY: "" }).email,
+    ).toBeUndefined();
+    expect(
+      alertsConfig({ ...email, ALERT_EMAIL_TO: "not-an-email" }).email,
+    ).toBeUndefined();
+    expect(
+      alertsConfig({ ...email, EMAIL_API_URL: "nope" }).email,
+    ).toBeUndefined();
+  });
+  it("reads the recipients separated by comma or semicolon", () => {
+    expect(alertsConfig(email).email).toEqual({
+      apiUrl: "https://email.example.test",
+      serviceKey: "key",
+      recipients: ["a@example.com", "b@example.com", "c@example.com"],
+    });
+  });
+});

@@ -2,6 +2,11 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { loadConfig, type AlertsConfig } from "./config";
 import { hasValidToken } from "./ingest/auth";
+import {
+  sendAlertEmails,
+  shouldEmail,
+  type EmailOutcome,
+} from "./channels/email/client";
 import { toIncident, type Incident } from "./ingest/model";
 import { grafanaWebhookSchema } from "./ingest/schema";
 import { ticketDescription, ticketSummary } from "./incident/content";
@@ -32,6 +37,15 @@ const viaCoordinator: HandleIncident = (env, incident) =>
   (env.INCIDENTS as DurableObjectNamespace<IncidentCoordinator>)
     .getByName(incident.key)
     .handle(incident);
+
+// Entrega o e-mail de um incidente; injetável nos testes
+export type DeliverEmail = (
+  config: AlertsConfig,
+  incident: Incident,
+) => Promise<EmailOutcome>;
+
+const deliverEmail: DeliverEmail = (config, incident) =>
+  sendAlertEmails(config.email!, incident, config.grafanaUrl);
 
 export interface MonitorApi {
   heartbeat(env: Env, at: number): Promise<void>;
@@ -80,6 +94,7 @@ function problem(
 export function createApp(
   handleIncident: HandleIncident = viaCoordinator,
   monitor: MonitorApi = defaultMonitor,
+  deliver: DeliverEmail = deliverEmail,
 ) {
   const app = new Hono<{ Bindings: Env }>();
 
@@ -189,23 +204,24 @@ export function createApp(
     )
       ? await monitor.pausedRecently(c.env, Date.now())
       : false;
-    const skipped: IncidentResult[] = [];
     const settled = await Promise.allSettled(
-      list.flatMap((incident) => {
-        if (pausedNow && incident.silenceOnPause && incident.firing) {
-          skipped.push({
-            alertId: incident.alertId,
-            service: incident.service,
-            action: "skipped_pause",
-          });
-          return [];
-        }
-        return [handleIncident(c.env, incident)];
+      list.map(async (incident) => {
+        if (pausedNow && incident.silenceOnPause && incident.firing)
+          return {
+            incident,
+            result: {
+              alertId: incident.alertId,
+              service: incident.service,
+              action: "skipped_pause",
+            } as IncidentResult,
+          };
+        return { incident, result: await handleIncident(c.env, incident) };
       }),
     );
-    const results = settled.flatMap((item) =>
+    const done = settled.flatMap((item) =>
       item.status === "fulfilled" ? [item.value] : [],
     );
+    const results = done.map((item) => item.result);
     const failed = settled.filter((item) => item.status === "rejected");
     if (failed.length) {
       // A mensagem do erro do Jira só leva a operação, o status HTTP e o motivo; nunca o corpo da
@@ -225,11 +241,22 @@ export function createApp(
         reasons.map((message) => ({ detail: message })),
       );
     }
-    results.push(...skipped);
+    // E-mail: melhor esforço, só para o que o ticket acabou de registrar (ver shouldEmail)
+    const email: EmailOutcome = { sent: 0, failed: 0 };
+    if (config.email)
+      for (const { incident, result } of done) {
+        if (!shouldEmail(incident, result)) continue;
+        const outcome = await deliver(config, incident).catch(() => ({
+          sent: 0,
+          failed: config.email!.recipients.length,
+        }));
+        email.sent += outcome.sent;
+        email.failed += outcome.failed;
+      }
     console.log(
       JSON.stringify({ actions: results.map((result) => result.action) }),
     );
-    return c.json({ results });
+    return c.json({ results, ...(config.email ? { email } : {}) });
   });
 
   app.route("/grafana", webhook);

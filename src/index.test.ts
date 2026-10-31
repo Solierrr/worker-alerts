@@ -280,3 +280,81 @@ describe("silence on pause", () => {
     ]);
   });
 });
+
+describe("e-mail after the ticket", () => {
+  const emailEnv = {
+    ...env,
+    EMAIL_API_URL: "https://email.example.test",
+    EMAIL_SERVICE_KEY: "key",
+    ALERT_EMAIL_TO: "dev@example.com",
+  } as Env;
+  const created = vi.fn<HandleIncident>(async (_env, incident) => ({
+    alertId: incident.alertId,
+    service: incident.service,
+    action: "created",
+    issueKey: "DEV-1",
+  }));
+  const idle = {
+    heartbeat: vi.fn(),
+    run: vi.fn(),
+    pausedRecently: vi.fn(async () => false),
+  };
+
+  it("delivers the e-mail for a new P1 ticket and reports it", async () => {
+    const deliver = vi.fn(async () => ({ sent: 1, failed: 0 }));
+    const response = await post(
+      createApp(created, idle as never, deliver),
+      "/grafana",
+      grafanaPayload(),
+      {},
+      emailEnv,
+    );
+    expect(deliver).toHaveBeenCalledTimes(1);
+    expect(await response.json()).toMatchObject({
+      email: { sent: 1, failed: 0 },
+    });
+  });
+  it("does not deliver when no ticket was created", async () => {
+    const deliver = vi.fn(async () => ({ sent: 1, failed: 0 }));
+    const skipped = vi.fn<HandleIncident>(async (_env, incident) => ({
+      alertId: incident.alertId,
+      service: incident.service,
+      action: "skipped_interval",
+    }));
+    await post(
+      createApp(skipped, idle as never, deliver),
+      "/grafana",
+      grafanaPayload(),
+      {},
+      emailEnv,
+    );
+    expect(deliver).not.toHaveBeenCalled();
+  });
+  it("keeps the ticket answer when the e-mail fails", async () => {
+    const deliver = vi.fn(async () => {
+      throw new Error("boom");
+    });
+    const response = await post(
+      createApp(created, idle as never, deliver),
+      "/grafana",
+      grafanaPayload(),
+      {},
+      emailEnv,
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      results: [{ action: "created" }],
+      email: { sent: 0, failed: 1 },
+    });
+  });
+  it("is silent about e-mail when the channel is not configured", async () => {
+    const deliver = vi.fn();
+    const response = await post(
+      createApp(created, idle as never, deliver),
+      "/grafana",
+      grafanaPayload(),
+    );
+    expect(deliver).not.toHaveBeenCalled();
+    expect(await response.json()).not.toHaveProperty("email");
+  });
+});
