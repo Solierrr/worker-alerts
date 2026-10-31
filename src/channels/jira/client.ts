@@ -74,7 +74,7 @@ export function createJiraClient(
         },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(10_000),
-        redirect: "error",
+        redirect: "manual",
       });
     } catch (error) {
       // Só o nome do erro de rede: a mensagem pode trazer a URL, e o corpo e as credenciais nunca saem daqui

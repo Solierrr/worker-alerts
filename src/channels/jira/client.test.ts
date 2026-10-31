@@ -50,7 +50,7 @@ describe("Jira client", () => {
       "https://example.atlassian.net/rest/api/3/search/jql",
     );
     expect(request.init.method).toBe("POST");
-    expect(request.init.redirect).toBe("error");
+    expect(request.init.redirect).toBe("manual");
     expect(request.init.signal).toBeInstanceOf(AbortSignal);
     expect(request.headers.authorization).toBe(
       `Basic ${btoa("grafana@example.com:jira-test-token-only")}`,
@@ -67,6 +67,12 @@ describe("Jira client", () => {
         summary: "[P2] core",
       },
     ]);
+  });
+  it("treats a redirect as a failure instead of following it", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(reply(302));
+    await expect(
+      createJiraClient(jira, fetchFn).search('project = "INC"', 1),
+    ).rejects.toMatchObject({ operation: "search", status: 302 });
   });
   it("creates an incident in the given project and issue type", async () => {
     const fetchFn = vi.fn().mockResolvedValue(reply(201, { key: "INC-8" }));
