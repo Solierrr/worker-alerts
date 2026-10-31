@@ -130,21 +130,21 @@ export function createApp(handleIncident: HandleIncident = viaCoordinator) {
     );
     const failed = settled.filter((item) => item.status === "rejected");
     if (failed.length) {
-      for (const item of failed) {
-        const error = item.reason as { operation?: string; status?: number };
-        console.error(
-          JSON.stringify({
-            code: "JIRA_REQUEST_FAILED",
-            operation: error.operation,
-            status: error.status,
-          }),
-        );
-      }
+      // A mensagem do erro do Jira só leva a operação, o status HTTP e o motivo; nunca o corpo da
+      // resposta nem credenciais. Os custom properties do erro se perdem na chamada ao Durable Object.
+      const reasons = failed.map((item) =>
+        item.reason instanceof Error
+          ? item.reason.message
+          : "erro desconhecido",
+      );
+      for (const message of reasons)
+        console.error(JSON.stringify({ code: "JIRA_REQUEST_FAILED", message }));
       // The Grafana retries on 5xx; the interval guard in Jira keeps the retry from duplicating tickets
       return problem(
         503,
         "JIRA_REQUEST_FAILED",
         "O Jira recusou ou não respondeu à requisição.",
+        reasons.map((message) => ({ detail: message })),
       );
     }
     console.log(
