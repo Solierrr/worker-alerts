@@ -23,10 +23,16 @@ Ainda não existem: sonda e heartbeat, e-mail pelo `api-email` e WhatsApp. Eles 
 Regras do ticket:
 
 - `firing` cria um ticket novo se o último do mesmo alerta, serviço e ambiente tem pelo menos `ALERT_MIN_INTERVAL_MIN` minutos e se houve menos de `ALERT_MAX_PER_24H` em 24 horas. No teto, só comenta no último.
-- `resolved` só grava o campo "Fim do incidente" e comenta. O Worker nunca muda o status nem fecha o ticket.
+- `resolved` adiciona o rótulo `inc-resolvido` e comenta com a duração. O Worker nunca muda o status nem fecha o ticket.
 - Falha ao consultar ou criar no Jira responde 503, e o Grafana tenta de novo.
 - Alertas de outro ambiente que não `ALERT_ENVIRONMENT` são ignorados.
 - Alerta com o rótulo `test=true` cria o ticket com o label `teste` e o prefixo `[TESTE]`.
+
+## para onde o ticket vai
+
+Cada serviço tem um espaço do Jira (`DEV`, `DB` ou `AI`) e o tipo de issue desse espaço (`Critic`). A tabela fica em `src/routing/routing.json`: `services` liga o `service_name` do alerta ao espaço, e um serviço que não está na tabela cai em `default`. Infraestrutura (`feeddb`, `kong`, `cluster`, `grafana`, `argocd`) fica no `DB`. O espaço do Hub não recebe alertas. Os espaços são projetos team-managed, então o Worker não usa campos personalizados: o fim do incidente é o rótulo `inc-resolvido`.
+
+Para mudar o destino de um serviço, edite `services` e abra um PR; `parseRouting` recusa uma tabela que cite um espaço sem tipo de issue.
 
 O contrato dos alertas exige os rótulos `alert_id`, `priority` (P1 a P5), `service_name` e `deployment_environment`. A cadência dos avisos fica na política de notificação do Grafana.
 
@@ -50,9 +56,7 @@ As variáveis comuns ficam em `wrangler.jsonc`. Os segredos entram no Worker pel
 | --------------------------------------------------------------------- | ---------- | --------------------------------------------- |
 | `WEBHOOK_TOKEN`                                                       | segredo    | token bearer que o Grafana envia              |
 | `JIRA_BASE_URL`, `JIRA_USER`, `JIRA_API_TOKEN`                        | segredo    | site, conta de serviço e token de API do Jira |
-| `JIRA_FIELD_START`, `JIRA_FIELD_END`                                  | segredo    | ids dos campos "Início" e "Fim do incidente"  |
 | `ALERT_GRAFANA_URL`                                                   | segredo    | base dos links do ticket                      |
-| `JIRA_PROJECT`, `JIRA_ISSUE_TYPE`                                     | `wrangler` | `INC` e `Incidente`                           |
 | `ALERT_ENVIRONMENT`                                                   | `wrangler` | ambiente que gera ticket, `prod`              |
 | `ALERT_MIN_INTERVAL_MIN`, `ALERT_MAX_PER_24H`, `ALERT_LOG_WINDOW_MIN` | `wrangler` | 30, 8 e 30                                    |
 

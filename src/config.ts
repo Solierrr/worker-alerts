@@ -1,13 +1,10 @@
 import { z } from "zod";
+import { parseRouting, type Routing } from "./routing/routing";
 
 export interface JiraConfig {
   baseUrl: string;
   user: string;
   apiToken: string;
-  project: string;
-  issueType: string;
-  fieldStart: string;
-  fieldEnd: string;
 }
 
 export interface AlertsConfig {
@@ -16,12 +13,12 @@ export interface AlertsConfig {
   minIntervalMin: number;
   maxPer24h: number;
   logWindowMin: number;
+  routing: Routing;
   jira?: JiraConfig;
 }
 
 const positive = z.coerce.number().int().positive();
 const text = z.string().trim().min(1);
-const customField = z.string().regex(/^customfield_\d+$/);
 
 const envSchema = z.object({
   ALERT_ENVIRONMENT: text.default("prod"),
@@ -35,10 +32,6 @@ const jiraSchema = z.object({
   JIRA_BASE_URL: z.url(),
   JIRA_USER: text,
   JIRA_API_TOKEN: text,
-  JIRA_PROJECT: text,
-  JIRA_ISSUE_TYPE: text,
-  JIRA_FIELD_START: customField,
-  JIRA_FIELD_END: customField,
 });
 
 function present(env: Record<string, unknown>) {
@@ -61,15 +54,12 @@ export function loadConfig(env: Env): AlertsConfig {
     minIntervalMin: base.ALERT_MIN_INTERVAL_MIN,
     maxPer24h: base.ALERT_MAX_PER_24H,
     logWindowMin: base.ALERT_LOG_WINDOW_MIN,
+    routing: parseRouting(),
     jira: jira.success
       ? {
           baseUrl: jira.data.JIRA_BASE_URL.replace(/\/+$/, ""),
           user: jira.data.JIRA_USER,
           apiToken: jira.data.JIRA_API_TOKEN,
-          project: jira.data.JIRA_PROJECT,
-          issueType: jira.data.JIRA_ISSUE_TYPE,
-          fieldStart: jira.data.JIRA_FIELD_START,
-          fieldEnd: jira.data.JIRA_FIELD_END,
         }
       : undefined,
   };

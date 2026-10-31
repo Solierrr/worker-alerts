@@ -9,16 +9,17 @@ export interface JiraIssue {
   summary: string;
 }
 export interface NewIncident {
+  project: string;
+  issueType: string;
   summary: string;
   description: AdfDoc;
   priority: string;
   labels: string[];
-  startsAt: Date;
 }
 export interface JiraClient {
   search(jql: string, maxResults: number): Promise<JiraIssue[]>;
   create(incident: NewIncident): Promise<{ key: string }>;
-  setEnd(key: string, endsAt: Date): Promise<void>;
+  addLabel(key: string, label: string): Promise<void>;
   comment(key: string, body: AdfDoc): Promise<void>;
   link(inwardKey: string, outwardKey: string): Promise<void>;
 }
@@ -47,7 +48,6 @@ const searchSchema = z.object({
 });
 const createdSchema = z.object({ key: z.string().min(1) });
 
-const jiraDate = (date: Date) => date.toISOString().replace("Z", "+0000");
 const parseJiraDate = (value: string) =>
   new Date(value.replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
 
@@ -112,13 +112,12 @@ export function createJiraClient(
       const parsed = createdSchema.safeParse(
         await request("create", "POST", "/issue", {
           fields: {
-            project: { key: config.project },
-            issuetype: { name: config.issueType },
+            project: { key: incident.project },
+            issuetype: { name: incident.issueType },
             summary: incident.summary,
             description: incident.description,
             priority: { name: incident.priority },
             labels: incident.labels,
-            [config.fieldStart]: jiraDate(incident.startsAt),
           },
         }),
       );
@@ -126,9 +125,9 @@ export function createJiraClient(
         throw new JiraRequestError("create", 201, "invalid response");
       return { key: parsed.data.key };
     },
-    async setEnd(key, endsAt) {
-      await request("setEnd", "PUT", `/issue/${encodeURIComponent(key)}`, {
-        fields: { [config.fieldEnd]: jiraDate(endsAt) },
+    async addLabel(key, label) {
+      await request("addLabel", "PUT", `/issue/${encodeURIComponent(key)}`, {
+        update: { labels: [{ add: label }] },
       });
     },
     async comment(key, body) {

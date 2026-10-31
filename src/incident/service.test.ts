@@ -8,15 +8,13 @@ import {
 import { grafanaWebhookSchema } from "../ingest/schema";
 import { toIncident } from "../ingest/model";
 import type { JiraClient, JiraIssue } from "../channels/jira/client";
-import { createIncidentService } from "./service";
+import { createIncidentService, RESOLVED_LABEL } from "./service";
 
 const config = alertsConfig({
   ALERT_GRAFANA_URL: "http://localhost:3000",
   JIRA_BASE_URL: "https://example.atlassian.net",
   JIRA_USER: "grafana@example.com",
   JIRA_API_TOKEN: "jira-test-token-only",
-  JIRA_FIELD_START: "customfield_10294",
-  JIRA_FIELD_END: "customfield_10295",
 });
 const now = new Date("2026-10-30T17:00:00Z");
 const minutesAgo = (minutes: number) =>
@@ -47,14 +45,14 @@ beforeEach(() => {
   open = [];
   jira = {
     search: vi.fn(async (jql: string) =>
-      jql.includes("is EMPTY")
+      jql.includes("inc-resolvido")
         ? open
         : jql.includes('labels = "esc-')
           ? related
           : history,
     ),
     create: vi.fn().mockResolvedValue({ key: "INC-20" }),
-    setEnd: vi.fn().mockResolvedValue(undefined),
+    addLabel: vi.fn().mockResolvedValue(undefined),
     comment: vi.fn().mockResolvedValue(undefined),
     link: vi.fn().mockResolvedValue(undefined),
   };
@@ -73,12 +71,13 @@ describe("firing alert", () => {
     expect(created).toMatchObject({
       summary: "[P1] core (prod): 7.1 % de respostas 5xx há 10 min",
       priority: "Highest",
-      startsAt: new Date("2026-10-30T16:06:30Z"),
+      project: "DEV",
+      issueType: "Critic",
     });
     expect(created.labels).toContain(`inc-key-${incident().key}`);
     expect(jira.link).not.toHaveBeenCalled();
     const jql = jira.search.mock.calls[0]![0] as string;
-    expect(jql).toContain('project = "INC"');
+    expect(jql).toContain('project = "DEV"');
     expect(jql).toContain(`labels = "inc-key-${incident().key}"`);
     expect(jql).toContain("ORDER BY created DESC");
   });
@@ -194,26 +193,35 @@ describe("resolved alert", () => {
       issueKey: "INC-5",
       issueKeys: ["INC-5", "INC-4"],
     });
-    expect(jira.setEnd).toHaveBeenCalledWith(
-      "INC-5",
-      new Date("2026-10-30T16:20:00Z"),
-    );
-    expect(jira.setEnd).toHaveBeenCalledWith(
-      "INC-4",
-      new Date("2026-10-30T16:20:00Z"),
-    );
+    expect(jira.addLabel).toHaveBeenCalledWith("INC-5", RESOLVED_LABEL);
+    expect(jira.addLabel).toHaveBeenCalledWith("INC-4", RESOLVED_LABEL);
     expect(jira.comment).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(jira.comment.mock.calls[0])).toContain("14 min");
-    expect(jira.search.mock.calls[0]![0]).toContain("cf[10295] is EMPTY");
+    expect(jira.search.mock.calls[0]![0]).toContain(
+      `labels != "${RESOLVED_LABEL}"`,
+    );
     expect(jira.create).not.toHaveBeenCalled();
   });
   it("does nothing when there is no ticket waiting for an end", async () => {
     expect((await service().handle(resolved())).action).toBe("no_open_ticket");
-    expect(jira.setEnd).not.toHaveBeenCalled();
+    expect(jira.addLabel).not.toHaveBeenCalled();
   });
   it("uses the current time when Grafana sends no valid end", async () => {
     open = [issue("INC-5", 20)];
     await service().handle(incident(grafanaAlert({ status: "resolved" })));
-    expect(jira.setEnd).toHaveBeenCalledWith("INC-5", now);
+    expect(jira.addLabel).toHaveBeenCalledWith("INC-5", RESOLVED_LABEL);
+    expect(JSON.stringify(jira.comment.mock.calls[0])).toContain("Duração");
+  });
+  it("looks the open tickets up in the project of the service", async () => {
+    open = [issue("AI-5", 20)];
+    await service().handle(
+      incident(
+        grafanaAlert({
+          status: "resolved",
+          labels: grafanaLabels({ service_name: "ai-assistant" }),
+        }),
+      ),
+    );
+    expect(jira.search.mock.calls[0]![0]).toContain('project = "AI"');
   });
 });

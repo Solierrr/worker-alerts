@@ -64,7 +64,5 @@ import { loadConfig } from "../src/config";
 // Builds the alerts config the way the Worker does, from its environment variables
 export const alertsConfig = (env: Record<string, string> = {}) =>
   loadConfig({
-    JIRA_PROJECT: "INC",
-    JIRA_ISSUE_TYPE: "Incidente",
     ...env,
   } as unknown as Env);

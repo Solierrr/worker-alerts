@@ -6,6 +6,7 @@
     "lib": ["ES2023"],
     "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"],
     "strict": true,
+    "resolveJsonModule": true,
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,

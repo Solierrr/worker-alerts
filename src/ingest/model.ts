@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AlertsConfig } from "../config";
+import { resolveTarget } from "../routing/routing";
 import type { GrafanaAlert, Priority } from "./schema";
 
 export const jiraPriorities: Record<Priority, string> = {
@@ -23,6 +24,8 @@ export interface Incident {
   environment: string;
   priority: Priority;
   jiraPriority: string;
+  jiraProject: string;
+  jiraIssueType: string;
   category: string;
   escalationGroup?: string;
   firing: boolean;
@@ -120,6 +123,7 @@ export function toIncident(
       ? reportedEnd
       : undefined;
   const key = incidentKey(alert);
+  const target = resolveTarget(config.routing, labels.service_name);
   const margin = config.logWindowMin * MINUTE;
   const logWindow = {
     from: new Date(startsAt.getTime() - margin),
@@ -132,6 +136,8 @@ export function toIncident(
     environment: labels.deployment_environment,
     priority: labels.priority,
     jiraPriority: jiraPriorities[labels.priority],
+    jiraProject: target.project,
+    jiraIssueType: target.issueType,
     category,
     escalationGroup: labels.escalation_group,
     firing,
