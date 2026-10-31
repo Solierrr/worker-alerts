@@ -1,0 +1,7 @@
+CHANGELOG.md
+.release-please-manifest.json
+package-lock.json
+worker-configuration.d.ts
+dist
+.wrangler
+node_modules

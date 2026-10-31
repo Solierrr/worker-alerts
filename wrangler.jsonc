@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "worker-alerts",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "alerts.solarianetwork.site",
+      "custom_domain": true,
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "INCIDENTS",
+        "class_name": "IncidentCoordinator",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["IncidentCoordinator"],
+    },
+  ],
+  "vars": {
+    "ALERT_ENVIRONMENT": "prod",
+    "ALERT_MIN_INTERVAL_MIN": "30",
+    "ALERT_MAX_PER_24H": "8",
+    "ALERT_LOG_WINDOW_MIN": "30",
+    "JIRA_PROJECT": "INC",
+    "JIRA_ISSUE_TYPE": "Incidente",
+  },
+  "observability": {
+    "enabled": true,
+  },
+}
