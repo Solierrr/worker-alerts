@@ -168,6 +168,7 @@ describe("heartbeat and monitor", () => {
     heartbeat: vi.fn(async () => undefined),
     run: vi.fn(async () => ({
       heartbeat: "ok" as const,
+      heartbeatAgeMin: 0,
       clusterActive: true,
       probes: [],
       opened: [],
