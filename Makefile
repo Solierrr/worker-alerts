@@ -3,20 +3,20 @@
 # Requer: make e sh (Git Bash no Windows). Para `make vault`: Infisical CLI e `infisical login`.
 
 # ---- especifico deste repositorio ----
-VAULT_FOLDERS ?=
-INSTALL_CMD   ?=
-DEV_CMD       ?=
-BUILD_CMD     ?=
-TEST_CMD      ?=
+VAULT_FOLDERS ?= /alerts
+INSTALL_CMD   ?= npm ci
+DEV_CMD       ?= npm run dev
+BUILD_CMD     ?= npm run check
+TEST_CMD      ?= npm test
 LINT_CMD      ?=
-FORMAT_CMD    ?=
-CLEAN_PATHS   ?=
-DOCTOR_TOOLS  ?= git
+FORMAT_CMD    ?= npm run format
+CLEAN_PATHS   ?= dist
+DOCTOR_TOOLS  ?= git node npm
 
 # ---- padrao (nao editar por repositorio) ----
 INFISICAL_PROJECT_ID ?= 2296d19c-5f3b-41e1-afa3-fcde39966a71
+OUT ?= .dev.vars
 ENV ?= local
-OUT ?= .env
 # Git Bash converteria '/vite' em 'C:/Program Files/Git/vite' ao chamar o CLI. A variavel vale so para o
 # CLI: exporta-la para o make quebraria o mvnw, o gradlew e outras ferramentas que precisam da conversao.
 ifeq ($(OS),Windows_NT)

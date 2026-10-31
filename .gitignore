@@ -65,3 +65,8 @@ Desktop.ini
 
 # Linux
 .directory
+
+# Cloudflare Workers
+.dev.vars
+.wrangler/
+node_modules/
