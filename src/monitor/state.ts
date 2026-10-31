@@ -20,6 +20,14 @@ export class MonitorState extends DurableObject<Env> implements MonitorStore {
     return now;
   }
 
+  async markPaused(at: number): Promise<void> {
+    await this.ctx.storage.put("paused", at);
+  }
+
+  async lastPaused(): Promise<number | undefined> {
+    return this.ctx.storage.get<number>("paused");
+  }
+
   async countProbe(name: string, ok: boolean): Promise<number> {
     const key = `failures:${name}`;
     const failures = ok

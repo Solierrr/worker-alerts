@@ -14,6 +14,7 @@ export type IncidentAction =
   | "skipped_interval"
   | "ceiling_comment"
   | "ignored_env"
+  | "skipped_pause"
   | "end_recorded"
   | "no_open_ticket";
 
