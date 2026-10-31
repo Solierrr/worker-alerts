@@ -98,6 +98,7 @@ describe("heartbeat", () => {
       ).getTime();
       const report = await m.run();
       expect(report.heartbeat).toBe("ok");
+      expect(report.heartbeatAgeMin).toBe(0);
     }
     expect(m.handled).toHaveLength(0);
   });

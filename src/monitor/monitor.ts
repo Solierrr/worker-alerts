@@ -36,6 +36,8 @@ export interface MonitorDeps {
 
 export interface MonitorReport {
   heartbeat: "ok" | "lost";
+  // Minutos desde a última batida (ou desde a primeira verificação, se nenhuma chegou)
+  heartbeatAgeMin: number;
   clusterActive: boolean;
   probes: { name: string; ok: boolean; failures: number }[];
   opened: string[];
@@ -106,6 +108,7 @@ export async function runMonitor(deps: MonitorDeps): Promise<MonitorReport> {
   const fetchFn = deps.fetchFn ?? fetch;
   const report: MonitorReport = {
     heartbeat: "ok",
+    heartbeatAgeMin: 0,
     clusterActive: true,
     probes: [],
     opened: [],
@@ -118,6 +121,7 @@ export async function runMonitor(deps: MonitorDeps): Promise<MonitorReport> {
   const last = Math.max((await deps.store.lastHeartbeat()) ?? 0, baseline);
   const lost = now.getTime() - last > HEARTBEAT_MAX_AGE_MS;
   report.heartbeat = lost ? "lost" : "ok";
+  report.heartbeatAgeMin = Math.floor((now.getTime() - last) / MINUTE);
   await reconcile(
     deps,
     {
