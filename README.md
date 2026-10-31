@@ -8,9 +8,10 @@ Roda fora do cluster de propósito: se o GKE cair ou for pausado, o aviso contin
 
 - `POST /grafana`: recebe o webhook do Grafana e cria, comenta ou fecha o fim do incidente no Jira.
 - `POST /grafana/preview`: mostra o ticket que seria criado, sem contato com o Jira.
-- `GET /health`: resposta pública para a sonda.
+- `GET /health`: resposta pública.
+- `POST /heartbeat` e `POST /monitor/run`: batida do Grafana Cloud e verificação sob demanda (mesmo bearer).
 
-Ainda não existem: sonda e heartbeat, e-mail pelo `api-email` e WhatsApp. Eles entram nas próximas etapas.
+Ainda não existem: e-mail pelo `api-email` e WhatsApp. Eles entram nas próximas etapas.
 
 ## como funciona
 
@@ -36,6 +37,15 @@ Para mudar o destino de um serviço, edite `services` e abra um PR; `parseRoutin
 
 O contrato dos alertas exige os rótulos `alert_id`, `priority` (P1 a P5), `service_name` e `deployment_environment`. A cadência dos avisos fica na política de notificação do Grafana.
 
+## heartbeat e sonda
+
+Dois verificadores cobrem o caso em que ninguém avisa que o aviso parou. Um Cron Trigger roda a cada 5 minutos (`*/5 * * * *`); `POST /monitor/run`, com o mesmo bearer, roda na hora e devolve o resultado.
+
+- **Heartbeat.** Uma regra do Grafana Cloud sempre disparando manda uma batida para `POST /heartbeat` a cada 5 minutos. O Worker guarda a última no Durable Object `MonitorState`. Sem batida há mais de 15 minutos, abre o incidente `H01` (P1, serviço `grafana-cloud`, espaço `DB`). Antes da primeira batida de um deploy novo conta o horário da primeira verificação, para não alertar à toa. É conferido sempre, porque o Grafana Cloud não depende do cluster.
+- **Sonda.** Chama `web-app` (pelo host `origin`), `core`, `auth` e `messenger` (`/actuator/health`); a lista fica em `src/monitor/targets.json`. Uma falha isolada não alerta: depois de 3 falhas seguidas abre o incidente `S01` (P1) no espaço do serviço, e uma resposta boa o resolve. Enquanto `ephemerality.json` do `infra-platform` marca o cluster como inativo, a sonda não roda e fecha o que estava aberto. Se o arquivo não puder ser lido, ela assume o cluster ativo.
+
+Os dois usam o mesmo caminho dos demais alertas: Durable Object por incidente, ticket `Critic` no Jira e rótulo `inc-resolvido` quando volta.
+
 ## estrutura
 
 ```text
@@ -45,6 +55,8 @@ src/
   ingest/             token, schema do webhook e normalização para Incident
   incident/           regras do ticket, textos e o Durable Object
   channels/jira/      cliente do Jira e montagem do corpo em ADF
+  monitor/            heartbeat, sonda, estado e lista de alvos
+  routing/            tabela serviço para espaço do Jira
 test/support.ts       dados e configuração de teste
 ```
 

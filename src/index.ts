@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { loadConfig, type AlertsConfig } from "./config";
 import { hasValidToken } from "./ingest/auth";
@@ -6,10 +6,18 @@ import { toIncident, type Incident } from "./ingest/model";
 import { grafanaWebhookSchema } from "./ingest/schema";
 import { ticketDescription, ticketSummary } from "./incident/content";
 import type { IncidentResult } from "./incident/service";
+import {
+  readClusterActive,
+  runMonitor,
+  type MonitorReport,
+} from "./monitor/monitor";
+import type { MonitorState } from "./monitor/state";
+import targets from "./monitor/targets.json";
 
 import type { IncidentCoordinator } from "./incident/coordinator";
 
 export { IncidentCoordinator } from "./incident/coordinator";
+export { MonitorState } from "./monitor/state";
 
 const BODY_LIMIT = 256 * 1024;
 
@@ -24,6 +32,27 @@ const viaCoordinator: HandleIncident = (env, incident) =>
     .getByName(incident.key)
     .handle(incident);
 
+export interface MonitorApi {
+  heartbeat(env: Env, at: number): Promise<void>;
+  run(env: Env): Promise<MonitorReport>;
+}
+
+const monitorState = (env: Env) =>
+  (env.MONITOR as DurableObjectNamespace<MonitorState>).getByName("main");
+
+// O estado do monitor vive numa instância só do Durable Object
+export const defaultMonitor: MonitorApi = {
+  heartbeat: (env, at) => monitorState(env).recordHeartbeat(at),
+  run: (env) =>
+    runMonitor({
+      config: loadConfig(env),
+      store: monitorState(env),
+      targets,
+      handle: (incident) => viaCoordinator(env, incident),
+      clusterActive: () => readClusterActive(),
+    }),
+};
+
 function problem(
   status: 401 | 413 | 415 | 422 | 503,
   code: string,
@@ -36,20 +65,39 @@ function problem(
   );
 }
 
-export function createApp(handleIncident: HandleIncident = viaCoordinator) {
+export function createApp(
+  handleIncident: HandleIncident = viaCoordinator,
+  monitor: MonitorApi = defaultMonitor,
+) {
   const app = new Hono<{ Bindings: Env }>();
 
   app.get("/health", (c) => c.json({ status: "ok" }));
 
   const webhook = new Hono<{ Bindings: Env }>();
 
-  webhook.use(async (c, next) => {
+  const requireToken: MiddlewareHandler<{ Bindings: Env }> = async (
+    c,
+    next,
+  ) => {
     if (
       !(await hasValidToken(c.req.header("authorization"), c.env.WEBHOOK_TOKEN))
     )
       return problem(401, "UNAUTHENTICATED", "Token ausente ou inválido.");
     await next();
+  };
+
+  // Batida do heartbeat: o Grafana Cloud chama a cada 5 minutos por uma regra sempre disparando
+  app.post("/heartbeat", requireToken, async (c) => {
+    await monitor.heartbeat(c.env, Date.now());
+    return c.json({ status: "ok" });
   });
+
+  // Roda a verificação na hora (o cron faz o mesmo de 5 em 5 minutos)
+  app.post("/monitor/run", requireToken, async (c) =>
+    c.json(await monitor.run(c.env)),
+  );
+
+  webhook.use(requireToken);
   webhook.use(
     bodyLimit({
       maxSize: BODY_LIMIT,
@@ -166,4 +214,9 @@ export function createApp(handleIncident: HandleIncident = viaCoordinator) {
   return app;
 }
 
-export default { fetch: createApp().fetch };
+export default {
+  fetch: createApp().fetch,
+  scheduled(_event, env, ctx) {
+    ctx.waitUntil(defaultMonitor.run(env));
+  },
+} satisfies ExportedHandler<Env>;
