@@ -76,8 +76,14 @@ export function createJiraClient(
         signal: AbortSignal.timeout(10_000),
         redirect: "error",
       });
-    } catch {
-      throw new JiraRequestError(operation, 0, "network error or timeout");
+    } catch (error) {
+      // Só o nome do erro de rede: a mensagem pode trazer a URL, e o corpo e as credenciais nunca saem daqui
+      const name = error instanceof Error ? error.name : "unknown";
+      throw new JiraRequestError(
+        operation,
+        0,
+        `network error or timeout (${name})`,
+      );
     }
     if (!response.ok) throw new JiraRequestError(operation, response.status);
     if (response.status === 204) return undefined;
