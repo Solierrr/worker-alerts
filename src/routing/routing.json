@@ -1,9 +1,15 @@
 {
   "default": "DEV",
   "projects": {
-    "DEV": { "issueType": "Critic" },
-    "DB": { "issueType": "Critic" },
-    "AI": { "issueType": "Critic" }
+    "DEV": {
+      "issueType": "Critic"
+    },
+    "DB": {
+      "issueType": "Critic"
+    },
+    "AI": {
+      "issueType": "Critic"
+    }
   },
   "services": {
     "core": "DEV",
@@ -35,5 +41,26 @@
     "grafana": "DB",
     "otel-collector": "DB",
     "argocd": "DB"
+  },
+  "hosts": {
+    "core": "https://core.solarianetwork.site",
+    "auth": "https://auth.solarianetwork.site",
+    "messenger": "https://messenger.solarianetwork.site",
+    "notify": "https://notify.solarianetwork.site",
+    "api-notify": "https://notify.solarianetwork.site",
+    "recommendation": "https://recommendation.solarianetwork.site",
+    "assistant": "https://assistant.solarianetwork.site",
+    "ai-assistant": "https://assistant.solarianetwork.site",
+    "accessibility": "https://accessibility.solarianetwork.site",
+    "ai-accessibility": "https://accessibility.solarianetwork.site",
+    "geographic": "https://geographic.solarianetwork.site",
+    "ai-geographic": "https://geographic.solarianetwork.site",
+    "operational": "https://operational.solarianetwork.site",
+    "ai-operational": "https://operational.solarianetwork.site",
+    "validation": "https://validation.solarianetwork.site",
+    "ai-validation": "https://validation.solarianetwork.site",
+    "grafana": "https://grafana.solarianetwork.site",
+    "argocd": "https://argocd.solarianetwork.site",
+    "web-app": "https://solarianetwork.site"
   }
 }

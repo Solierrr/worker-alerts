@@ -41,7 +41,7 @@ O rótulo opcional `silence_on_pause="true"` marca um alerta de "serviço sem da
 
 ## e-mail
 
-Melhor esforço, ligado só quando `EMAIL_API_URL`, `EMAIL_SERVICE_KEY` e `ALERT_EMAIL_TO` são válidos. O Worker chama `POST /emails` do `api-email` com o modelo `operational-alert` (um destinatário por chamada, `X-Service-Key`), já com o resumo, o impacto e os primeiros passos prontos; o `api-email` só aplica o layout e entrega. Como o aviso passa pelo cluster, ele não sai com o cluster caído; Jira e heartbeat não dependem disso.
+Melhor esforço, ligado só quando `EMAIL_API_URL`, `EMAIL_SERVICE_KEY` e `ALERT_EMAIL_TO` são válidos. O Worker chama `POST /emails` do `api-email` com o modelo `operational-alert` (um destinatário por chamada, `X-Service-Key`), já com o resumo e o impacto prontos e o link do serviço com problema (endereços em `hosts` de `src/routing/routing.json`; serviço interno vai só com o nome); o `api-email` só aplica o layout e entrega. Como o aviso passa pelo cluster, ele não sai com o cluster caído; Jira e heartbeat não dependem disso.
 
 O e-mail acompanha o ticket, não cada repetição do Grafana: sai quando um ticket novo é criado e quando o fim do incidente é registrado, só para P1 e P2 e nunca para alerta de teste (`test=true`). Falha do e-mail não derruba o webhook e vem em `email.failed` na resposta. A origem do link do dashboard (`ALERT_GRAFANA_URL`) precisa estar em `EMAIL_ALLOWED_ORIGINS` do `api-email`.
 
