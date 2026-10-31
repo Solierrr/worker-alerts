@@ -4,5 +4,3 @@ ALERT_GRAFANA_URL=https://grafana.solarianetwork.site
 JIRA_BASE_URL=https://example.atlassian.net
 JIRA_USER=
 JIRA_API_TOKEN=
-JIRA_FIELD_START=customfield_00000
-JIRA_FIELD_END=customfield_00000

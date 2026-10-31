@@ -12,8 +12,6 @@ export default defineConfig({
           JIRA_BASE_URL: "https://jira.test",
           JIRA_USER: "grafana@test",
           JIRA_API_TOKEN: "jira-token",
-          JIRA_FIELD_START: "customfield_10001",
-          JIRA_FIELD_END: "customfield_10002",
         },
       },
     }),

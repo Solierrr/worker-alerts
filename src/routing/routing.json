@@ -1,0 +1,36 @@
+{
+  "default": "DEV",
+  "projects": {
+    "DEV": { "issueType": "Critic" },
+    "DB": { "issueType": "Critic" },
+    "AI": { "issueType": "Critic" }
+  },
+  "services": {
+    "core": "DEV",
+    "auth": "DEV",
+    "messenger": "DEV",
+    "notify": "DEV",
+    "email": "DEV",
+    "google": "DEV",
+    "recommendation": "DEV",
+    "web-app": "DEV",
+    "assistant": "AI",
+    "accessibility": "AI",
+    "geographic": "AI",
+    "operational": "AI",
+    "validation": "AI",
+    "ai-assistant": "AI",
+    "ai-accessibility": "AI",
+    "ai-geographic": "AI",
+    "ai-operational": "AI",
+    "ai-validation": "AI",
+    "mcp-database": "AI",
+    "feeddb": "DB",
+    "database-bootstrap": "DB",
+    "kong": "DB",
+    "cluster": "DB",
+    "grafana": "DB",
+    "otel-collector": "DB",
+    "argocd": "DB"
+  }
+}

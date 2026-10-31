@@ -5,8 +5,6 @@ const jira = {
   JIRA_BASE_URL: "https://example.atlassian.net/",
   JIRA_USER: "grafana@example.com",
   JIRA_API_TOKEN: "token",
-  JIRA_FIELD_START: "customfield_10294",
-  JIRA_FIELD_END: "customfield_10295",
 };
 
 describe("config", () => {
@@ -22,12 +20,11 @@ describe("config", () => {
   it("turns the Jira channel on only when every variable is valid", () => {
     expect(alertsConfig(jira).jira).toMatchObject({
       baseUrl: "https://example.atlassian.net",
-      project: "INC",
-      issueType: "Incidente",
+      user: "grafana@example.com",
     });
     expect(alertsConfig({ ...jira, JIRA_API_TOKEN: "" }).jira).toBeUndefined();
     expect(
-      alertsConfig({ ...jira, JIRA_FIELD_END: "10295" }).jira,
+      alertsConfig({ ...jira, JIRA_BASE_URL: "not a url" }).jira,
     ).toBeUndefined();
   });
   it("reads the numeric limits and trims the Grafana URL", () => {

@@ -30,6 +30,7 @@ const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
 const HISTORY_DAYS = 30;
 const HISTORY_LIMIT = 100;
+export const RESOLVED_LABEL = "inc-resolvido";
 
 export function createIncidentService(
   jira: JiraClient,
@@ -38,12 +39,11 @@ export function createIncidentService(
 ) {
   const settings = config.jira;
   if (!settings) throw new Error("Jira is not configured");
-  const project = `project = "${settings.project}"`;
   const label = (value: string) => `labels = "${value}"`;
-  const endFieldId = settings.fieldEnd.replace("customfield_", "");
 
   async function onFiring(incident: Incident): Promise<IncidentResult> {
     const now = clock();
+    const project = `project = "${incident.jiraProject}"`;
     const base = { alertId: incident.alertId, service: incident.service };
     const history = await jira.search(
       `${project} AND ${label(`inc-key-${incident.key}`)} AND created >= -${HISTORY_DAYS}d ORDER BY created DESC`,
@@ -68,6 +68,8 @@ export function createIncidentService(
     }
 
     const { key } = await jira.create({
+      project: incident.jiraProject,
+      issueType: incident.jiraIssueType,
       summary: ticketSummary(incident),
       description: ticketDescription(incident, {
         occurrence: history.length + 1,
@@ -75,7 +77,6 @@ export function createIncidentService(
       }),
       priority: incident.jiraPriority,
       labels: incident.tags,
-      startsAt: incident.startsAt,
     });
 
     const warnings = new Set<string>();
@@ -136,16 +137,17 @@ export function createIncidentService(
   }
 
   async function onResolved(incident: Incident): Promise<IncidentResult> {
+    const project = `project = "${incident.jiraProject}"`;
     const base = { alertId: incident.alertId, service: incident.service };
     const open = await jira.search(
-      `${project} AND ${label(`inc-key-${incident.key}`)} AND cf[${endFieldId}] is EMPTY AND created >= -${HISTORY_DAYS}d ORDER BY created DESC`,
+      `${project} AND ${label(`inc-key-${incident.key}`)} AND labels != "${RESOLVED_LABEL}" AND created >= -${HISTORY_DAYS}d ORDER BY created DESC`,
       50,
     );
     if (!open.length) return { ...base, action: "no_open_ticket" };
     const endsAt = incident.endsAt ?? clock();
     for (const issue of open) {
-      // Only the end is recorded: closing the ticket stays a human decision
-      await jira.setEnd(issue.key, endsAt);
+      // Only the end is recorded (label and comment): closing the ticket stays a human decision
+      await jira.addLabel(issue.key, RESOLVED_LABEL);
       await jira.comment(issue.key, closingComment(incident, endsAt));
     }
     return {

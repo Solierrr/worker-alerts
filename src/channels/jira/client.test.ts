@@ -7,8 +7,6 @@ const { jira } = alertsConfig({
   JIRA_BASE_URL: "https://example.atlassian.net",
   JIRA_USER: "grafana@example.com",
   JIRA_API_TOKEN: "jira-test-token-only",
-  JIRA_FIELD_START: "customfield_10294",
-  JIRA_FIELD_END: "customfield_10295",
 });
 if (!jira) throw new Error("Jira config expected");
 
@@ -70,15 +68,16 @@ describe("Jira client", () => {
       },
     ]);
   });
-  it("creates an incident with priority, tags and the start field", async () => {
+  it("creates an incident in the given project and issue type", async () => {
     const fetchFn = vi.fn().mockResolvedValue(reply(201, { key: "INC-8" }));
     const description = adfDoc(paragraph(text("corpo")));
     const result = await createJiraClient(jira, fetchFn).create({
+      project: "DEV",
+      issueType: "Critic",
       summary: "[P1] core",
       description,
       priority: "Highest",
       labels: ["grafana-alert", "P1"],
-      startsAt: new Date("2026-10-30T16:06:30Z"),
     });
     expect(result).toEqual({ key: "INC-8" });
     expect(call(fetchFn).url).toBe(
@@ -86,25 +85,24 @@ describe("Jira client", () => {
     );
     expect(call(fetchFn).body).toEqual({
       fields: {
-        project: { key: "INC" },
-        issuetype: { name: "Incidente" },
+        project: { key: "DEV" },
+        issuetype: { name: "Critic" },
         summary: "[P1] core",
         description,
         priority: { name: "Highest" },
         labels: ["grafana-alert", "P1"],
-        customfield_10294: "2026-10-30T16:06:30.000+0000",
       },
     });
   });
-  it("records the end, comments and links without changing the status", async () => {
+  it("labels the end, comments and links without changing the status", async () => {
     const fetchFn = vi.fn().mockResolvedValue(reply(204));
     const client = createJiraClient(jira, fetchFn);
-    await client.setEnd("INC-8", new Date("2026-10-30T16:20:00Z"));
+    await client.addLabel("INC-8", "inc-resolvido");
     await client.comment("INC-8", adfDoc(paragraph(text("ok"))));
     await client.link("INC-9", "INC-8");
     expect(call(fetchFn, 0)).toMatchObject({
       url: "https://example.atlassian.net/rest/api/3/issue/INC-8",
-      body: { fields: { customfield_10295: "2026-10-30T16:20:00.000+0000" } },
+      body: { update: { labels: [{ add: "inc-resolvido" }] } },
     });
     expect(call(fetchFn, 0).init.method).toBe("PUT");
     expect(call(fetchFn, 1).url).toMatch(/\/issue\/INC-8\/comment$/);
@@ -139,11 +137,12 @@ describe("Jira client", () => {
     );
     await expect(
       client.create({
+        project: "DEV",
+        issueType: "Critic",
         summary: "x",
         description: adfDoc(paragraph(text("x"))),
         priority: "High",
         labels: [],
-        startsAt: new Date(),
       }),
     ).rejects.toBeInstanceOf(JiraRequestError);
   });
