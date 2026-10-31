@@ -1,0 +1,23 @@
+meta {
+  name: [mutates] POST /auth/login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{userEmail}}",
+    "password": "{{userPassword}}"
+  }
+}
+
+docs {
+  Authenticates a local user. Copy the returned access token into the local userToken variable before sending authenticated requests.
+  This operation may create a session or update authentication state.
+}

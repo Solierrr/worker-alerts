@@ -1,0 +1,15 @@
+meta {
+  name: GET /health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health
+  body: none
+  auth: none
+}
+
+docs {
+  Checks whether the local service is healthy. Change the route if the API uses a different health endpoint.
+}

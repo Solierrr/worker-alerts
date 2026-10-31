@@ -1,0 +1,7 @@
+# Pastas do Infisical que este repositório lê. Serve de documentação e de base
+# para a checagem do .env.example; o Render não usa este arquivo.
+# Remova este arquivo em repositórios que não usam o Infisical.
+folders:
+  - /database
+# Variáveis do .env.example que não vêm do Infisical (por exemplo PORT).
+ignore: []
