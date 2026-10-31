@@ -37,6 +37,8 @@ Para mudar o destino de um serviço, edite `services` e abra um PR; `parseRoutin
 
 O contrato dos alertas exige os rótulos `alert_id`, `priority` (P1 a P5), `service_name` e `deployment_environment`. A cadência dos avisos fica na política de notificação do Grafana.
 
+O rótulo opcional `silence_on_pause="true"` marca um alerta de "serviço sem dados": enquanto `ephemerality.json` do `infra-platform` marca o cluster inativo, e por 30 minutos depois que ele volta (os serviços levam alguns minutos para mandar métrica de novo), o disparo não abre ticket e a resposta traz `skipped_pause`. O resolvido passa sempre, para fechar o que ficou aberto. Alerta sem o rótulo nunca é silenciado.
+
 ## heartbeat e sonda
 
 Dois verificadores cobrem o caso em que ninguém avisa que o aviso parou. Um Cron Trigger roda a cada 5 minutos (`*/5 * * * *`); `POST /monitor/run`, com o mesmo bearer, roda na hora e devolve o resultado.

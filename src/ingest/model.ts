@@ -30,6 +30,7 @@ export interface Incident {
   escalationGroup?: string;
   firing: boolean;
   test: boolean;
+  silenceOnPause: boolean;
   startsAt: Date;
   endsAt?: Date;
   key: string;
@@ -142,6 +143,7 @@ export function toIncident(
     escalationGroup: labels.escalation_group,
     firing,
     test: labels.test === "true",
+    silenceOnPause: labels.silence_on_pause === "true",
     startsAt,
     endsAt,
     key,

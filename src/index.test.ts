@@ -164,8 +164,9 @@ describe("preview", () => {
 });
 
 describe("heartbeat and monitor", () => {
-  const monitor = () => ({
+  const monitor = (paused = false) => ({
     heartbeat: vi.fn(async () => undefined),
+    pausedRecently: vi.fn(async () => paused),
     run: vi.fn(async () => ({
       heartbeat: "ok" as const,
       heartbeatAgeMin: 0,
@@ -195,5 +196,87 @@ describe("heartbeat and monitor", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ heartbeat: "ok" });
     expect(api.run).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("silence on pause", () => {
+  const silenced = (patch: Record<string, unknown> = {}) =>
+    grafanaAlert({
+      labels: {
+        ...grafanaAlert().labels,
+        alert_id: "A01",
+        silence_on_pause: "true",
+      },
+      ...patch,
+    });
+  const api = (paused: boolean) => ({
+    heartbeat: vi.fn(async () => undefined),
+    run: vi.fn(),
+    pausedRecently: vi.fn(async () => paused),
+  });
+  const handled = () =>
+    vi.fn<HandleIncident>(async (_env, incident) => ({
+      alertId: incident.alertId,
+      service: incident.service,
+      action: "created",
+      issueKey: "DEV-1",
+    }));
+
+  it("does not open a ticket for a silenced alert while the cluster is paused", async () => {
+    const handle = handled();
+    const monitor = api(true);
+    const response = await post(
+      createApp(handle, monitor as never),
+      "/grafana",
+      grafanaPayload([silenced()]),
+    );
+    expect(response.status).toBe(200);
+    expect(handle).not.toHaveBeenCalled();
+    expect(await response.json()).toEqual({
+      results: [{ alertId: "A01", service: "core", action: "skipped_pause" }],
+    });
+  });
+  it("opens the ticket when the cluster is not paused", async () => {
+    const handle = handled();
+    await post(
+      createApp(handle, api(false) as never),
+      "/grafana",
+      grafanaPayload([silenced()]),
+    );
+    expect(handle).toHaveBeenCalledTimes(1);
+  });
+  it("still processes the resolved of a silenced alert while paused", async () => {
+    const handle = handled();
+    await post(
+      createApp(handle, api(true) as never),
+      "/grafana",
+      grafanaPayload([silenced({ status: "resolved" })]),
+    );
+    expect(handle).toHaveBeenCalledTimes(1);
+  });
+  it("never silences an alert without the label and does not even ask", async () => {
+    const handle = handled();
+    const monitor = api(true);
+    await post(
+      createApp(handle, monitor as never),
+      "/grafana",
+      grafanaPayload([grafanaAlert()]),
+    );
+    expect(handle).toHaveBeenCalledTimes(1);
+    expect(monitor.pausedRecently).not.toHaveBeenCalled();
+  });
+  it("silences only the marked alerts of a mixed group", async () => {
+    const handle = handled();
+    const response = await post(
+      createApp(handle, api(true) as never),
+      "/grafana",
+      grafanaPayload([silenced(), grafanaAlert()]),
+    );
+    expect(handle).toHaveBeenCalledTimes(1);
+    const body = (await response.json()) as { results: { action: string }[] };
+    expect(body.results.map((r) => r.action).sort()).toEqual([
+      "created",
+      "skipped_pause",
+    ]);
   });
 });

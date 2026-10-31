@@ -7,6 +7,7 @@ import { grafanaWebhookSchema } from "./ingest/schema";
 import { ticketDescription, ticketSummary } from "./incident/content";
 import type { IncidentResult } from "./incident/service";
 import {
+  PAUSE_GRACE_MS,
   readClusterActive,
   runMonitor,
   type MonitorReport,
@@ -35,6 +36,8 @@ const viaCoordinator: HandleIncident = (env, incident) =>
 export interface MonitorApi {
   heartbeat(env: Env, at: number): Promise<void>;
   run(env: Env): Promise<MonitorReport>;
+  // O cluster está pausado, ou voltou há pouco (ver PAUSE_GRACE_MS)
+  pausedRecently(env: Env, at: number): Promise<boolean>;
 }
 
 const monitorState = (env: Env) =>
@@ -43,6 +46,15 @@ const monitorState = (env: Env) =>
 // O estado do monitor vive numa instância só do Durable Object
 export const defaultMonitor: MonitorApi = {
   heartbeat: (env, at) => monitorState(env).recordHeartbeat(at),
+  async pausedRecently(env, at) {
+    const state = monitorState(env);
+    if (!(await readClusterActive())) {
+      await state.markPaused(at);
+      return true;
+    }
+    const last = await state.lastPaused();
+    return last !== undefined && at - last < PAUSE_GRACE_MS;
+  },
   run: (env) =>
     runMonitor({
       config: loadConfig(env),
@@ -170,8 +182,26 @@ export function createApp(
       );
     const list = await incidents(c.req.raw, config);
     if (list instanceof Response) return list;
+    // Alertas marcados com silence_on_pause (serviço sem dados) não abrem ticket enquanto o cluster
+    // está pausado de propósito. O resolvido passa sempre, para fechar o que ficou aberto.
+    const pausedNow = list.some(
+      (incident) => incident.silenceOnPause && incident.firing,
+    )
+      ? await monitor.pausedRecently(c.env, Date.now())
+      : false;
+    const skipped: IncidentResult[] = [];
     const settled = await Promise.allSettled(
-      list.map((incident) => handleIncident(c.env, incident)),
+      list.flatMap((incident) => {
+        if (pausedNow && incident.silenceOnPause && incident.firing) {
+          skipped.push({
+            alertId: incident.alertId,
+            service: incident.service,
+            action: "skipped_pause",
+          });
+          return [];
+        }
+        return [handleIncident(c.env, incident)];
+      }),
     );
     const results = settled.flatMap((item) =>
       item.status === "fulfilled" ? [item.value] : [],
@@ -195,6 +225,7 @@ export function createApp(
         reasons.map((message) => ({ detail: message })),
       );
     }
+    results.push(...skipped);
     console.log(
       JSON.stringify({ actions: results.map((result) => result.action) }),
     );

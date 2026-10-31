@@ -9,6 +9,9 @@ const MINUTE = 60_000;
 export const HEARTBEAT_MAX_AGE_MS = 15 * MINUTE;
 // Falhas seguidas da sonda antes de abrir o incidente: uma falha isolada não alerta
 export const PROBE_FAILURES_TO_ALERT = 3;
+// Depois que o cluster volta, os serviços levam alguns minutos para mandar métrica de novo; nesse
+// intervalo os alertas de "serviço sem dados" continuam silenciados
+export const PAUSE_GRACE_MS = 30 * MINUTE;
 
 export interface ProbeTarget {
   name: string;
@@ -19,6 +22,8 @@ export interface ProbeTarget {
 export interface MonitorStore {
   lastHeartbeat(): Promise<number | undefined>;
   baseline(now: number): Promise<number>;
+  markPaused(at: number): Promise<void>;
+  lastPaused(): Promise<number | undefined>;
   countProbe(name: string, ok: boolean): Promise<number>;
   openedAt(key: string): Promise<number | undefined>;
   setOpenedAt(key: string, at: number | undefined): Promise<void>;
@@ -142,6 +147,7 @@ export async function runMonitor(deps: MonitorDeps): Promise<MonitorReport> {
 
   // Sonda: só com o cluster ativo. Numa pausa planejada ela fica quieta e fecha o que estava aberto.
   report.clusterActive = await deps.clusterActive();
+  if (!report.clusterActive) await deps.store.markPaused(now.getTime());
   for (const target of deps.targets) {
     const key = `probe:${target.name}`;
     const spec: Spec = {

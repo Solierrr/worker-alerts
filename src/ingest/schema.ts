@@ -15,6 +15,7 @@ const alertLabelsSchema = z.looseObject({
   escalation_group: slug.optional(),
   alertname: z.string().max(200).optional(),
   test: z.enum(["true", "false"]).optional(),
+  silence_on_pause: z.enum(["true", "false"]).optional(),
 });
 
 const alertSchema = z.looseObject({

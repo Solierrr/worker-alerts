@@ -24,6 +24,12 @@ function memoryStore(): MonitorStore & { heartbeat?: number } {
       if (!state.has("baseline")) state.set("baseline", now);
       return state.get("baseline")!;
     },
+    async markPaused(at: number) {
+      state.set("paused", at);
+    },
+    async lastPaused() {
+      return state.get("paused");
+    },
     async countProbe(name: string, ok: boolean) {
       const key = `f:${name}`;
       const failures = ok ? 0 : (state.get(key) ?? 0) + 1;
@@ -207,6 +213,20 @@ describe("probe", () => {
     expect(report.probes).toEqual([]);
     expect(report.resolved).toEqual(["probe:core"]);
     expect(m.handled.at(-1)).toMatchObject({ firing: false });
+  });
+});
+
+describe("pause memory", () => {
+  it("remembers the last time the cluster was seen paused", async () => {
+    const m = setup();
+    m.store.heartbeat = Number.MAX_SAFE_INTEGER;
+    m.setActive(false);
+    await m.run();
+    expect(await m.store.lastPaused()).toBe(t0.getTime());
+    m.advance(5 * MINUTE);
+    m.setActive(true);
+    await m.run();
+    expect(await m.store.lastPaused()).toBe(t0.getTime());
   });
 });
 
