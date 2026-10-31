@@ -62,5 +62,20 @@
     "grafana": "https://grafana.solarianetwork.site",
     "argocd": "https://argocd.solarianetwork.site",
     "web-app": "https://solarianetwork.site"
+  },
+  "names": {
+    "core": "api-core",
+    "auth": "api-auth",
+    "messenger": "api-messenger",
+    "notify": "api-notify",
+    "recommendation": "api-recommendation",
+    "email": "api-email",
+    "google": "api-google",
+    "google-registry": "api-google",
+    "assistant": "ai-assistant",
+    "accessibility": "ai-accessibility",
+    "geographic": "ai-geographic",
+    "operational": "ai-operational",
+    "validation": "ai-validation"
   }
 }

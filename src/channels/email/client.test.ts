@@ -61,12 +61,13 @@ describe("request to the api-email", () => {
       data: {
         alertPriority: "P1",
         alertStatus: "firing",
-        serviceName: "core",
+        serviceName: "api-core",
         environment: "prod",
         startedAt: "2026-10-30T16:06:30.000Z",
       },
     });
     expect(body.data.summary).toContain("respostas 5xx");
+    expect(body.data.summary).not.toContain("core (prod)");
     expect(body.data).not.toHaveProperty("firstSteps");
     expect(body.data.serviceUrl).toBe("https://core.solarianetwork.site");
     expect(body.data.actionUrl).toMatch(

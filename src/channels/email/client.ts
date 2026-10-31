@@ -19,6 +19,13 @@ const oneLine = (value: string, max: number) =>
     max,
   );
 
+// O resumo das regras começa com "servico (ambiente): ", que o e-mail já diz na linha do alerta
+function withoutPrefix(incident: Incident) {
+  const text = incident.summary || incident.alertName;
+  const prefix = `${incident.service} (${incident.environment}): `;
+  return text.startsWith(prefix) ? text.slice(prefix.length) : text;
+}
+
 // O e-mail acompanha o ticket, não cada repetição do Grafana: sai quando um ticket novo é criado e
 // quando o fim de um incidente é registrado, só para P1 e P2 e nunca para alerta de teste.
 export function shouldEmail(incident: Incident, result: IncidentResult) {
@@ -42,9 +49,9 @@ export function buildEmailRequest(
     data: {
       alertPriority: incident.priority,
       alertStatus: incident.firing ? "firing" : "resolved",
-      serviceName: oneLine(incident.service, 120),
+      serviceName: oneLine(incident.serviceFullName, 120),
       environment: oneLine(incident.environment, 120),
-      summary: oneLine(incident.summary || incident.alertName, 300),
+      summary: oneLine(withoutPrefix(incident), 300),
       ...(incident.impact ? { impact: oneLine(incident.impact, 400) } : {}),
       ...(incident.serviceUrl ? { serviceUrl: incident.serviceUrl } : {}),
       startedAt: incident.startsAt.toISOString(),

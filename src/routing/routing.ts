@@ -7,6 +7,13 @@ const routingSchema = z
     default: projectKey,
     projects: z.record(projectKey, z.object({ issueType: z.string().min(1) })),
     services: z.record(z.string().regex(/^[A-Za-z0-9_.-]{1,80}$/), projectKey),
+    // Nome inteiro do serviço (o do repositório e do deploy) por trás do nome curto da telemetria
+    names: z
+      .record(
+        z.string().regex(/^[A-Za-z0-9_.-]{1,80}$/),
+        z.string().regex(/^[A-Za-z0-9_.-]{1,80}$/),
+      )
+      .default({}),
     // Endereço público de cada serviço, usado como link nos avisos; serviço interno não tem
     hosts: z
       .record(
@@ -36,6 +43,11 @@ export interface JiraTarget {
 // consulta repositórios em execução.
 export function parseRouting(value: unknown = snapshot): Routing {
   return routingSchema.parse(value);
+}
+
+// Nome inteiro do serviço; sem entrada, o próprio nome da telemetria já é o inteiro
+export function serviceFullName(routing: Routing, service: string): string {
+  return routing.names[service] ?? service;
 }
 
 // Link do serviço para os avisos; vazio quando o serviço é interno
