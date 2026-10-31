@@ -67,11 +67,8 @@ describe("request to the api-email", () => {
       },
     });
     expect(body.data.summary).toContain("respostas 5xx");
-    expect(body.data.firstSteps).toEqual([
-      "Abrir o dashboard do serviço.",
-      "Ver os logs de erro.",
-      "Checar a última publicação.",
-    ]);
+    expect(body.data).not.toHaveProperty("firstSteps");
+    expect(body.data.serviceUrl).toBe("https://core.solarianetwork.site");
     expect(body.data.actionUrl).toMatch(
       /^https:\/\/grafana\.example\.test\/d\//,
     );
@@ -88,6 +85,18 @@ describe("request to the api-email", () => {
     expect(body.data.endedAt).toBe("2026-10-30T16:20:00.000Z");
     expect(body.data).not.toHaveProperty("firstSteps");
   });
+  it("leaves the link out for an internal service", () => {
+    const body = buildEmailRequest(
+      incident(
+        grafanaAlert({
+          labels: grafanaLabels({ service_name: "google-registry" }),
+        }),
+      ),
+      "dev@example.com",
+      undefined,
+    )!;
+    expect(body.data).not.toHaveProperty("serviceUrl");
+  });
   it("flattens line breaks and clips long texts", () => {
     const body = buildEmailRequest(
       incident(
@@ -103,6 +112,8 @@ describe("request to the api-email", () => {
     )!;
     expect(body.data.summary).not.toMatch(/[\n\t]/);
     expect(body.data.summary.length).toBeLessThanOrEqual(300);
+    expect(body.data.summary.endsWith("...")).toBe(true);
+    expect(body.data.summary).not.toContain("…");
     expect(body.data.impact).toBe("a b");
   });
 });

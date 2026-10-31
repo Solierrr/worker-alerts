@@ -7,6 +7,13 @@ const routingSchema = z
     default: projectKey,
     projects: z.record(projectKey, z.object({ issueType: z.string().min(1) })),
     services: z.record(z.string().regex(/^[A-Za-z0-9_.-]{1,80}$/), projectKey),
+    // Endereço público de cada serviço, usado como link nos avisos; serviço interno não tem
+    hosts: z
+      .record(
+        z.string().regex(/^[A-Za-z0-9_.-]{1,80}$/),
+        z.url().refine((value) => value.startsWith("https://")),
+      )
+      .default({}),
   })
   .superRefine((value, context) => {
     const known = new Set(Object.keys(value.projects));
@@ -29,6 +36,14 @@ export interface JiraTarget {
 // consulta repositórios em execução.
 export function parseRouting(value: unknown = snapshot): Routing {
   return routingSchema.parse(value);
+}
+
+// Link do serviço para os avisos; vazio quando o serviço é interno
+export function serviceUrl(
+  routing: Routing,
+  service: string,
+): string | undefined {
+  return routing.hosts[service];
 }
 
 // Serviço sem entrada cai no projeto padrão, para o alerta não se perder.

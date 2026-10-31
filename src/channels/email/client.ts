@@ -1,6 +1,5 @@
 import type { EmailConfig } from "../../config";
 import type { IncidentResult } from "../../incident/service";
-import { splitSteps } from "../../incident/content";
 import type { Incident } from "../../ingest/model";
 
 export interface EmailOutcome {
@@ -9,7 +8,7 @@ export interface EmailOutcome {
 }
 
 const clip = (value: string, max: number) =>
-  value.length <= max ? value : `${value.slice(0, max - 1)}…`;
+  value.length <= max ? value : `${value.slice(0, max - 3)}...`;
 // O contrato do api-email recusa quebras de linha e caracteres de controle nos textos
 const oneLine = (value: string, max: number) =>
   clip(
@@ -36,10 +35,6 @@ export function buildEmailRequest(
 ) {
   const actionUrl = incident.links.dashboard ?? fallbackUrl;
   if (!actionUrl) return undefined;
-  const steps = splitSteps(incident.firstSteps)
-    .slice(0, 6)
-    .map((step) => oneLine(step, 240))
-    .filter(Boolean);
   return {
     template: "operational-alert",
     locale: "pt-BR",
@@ -51,7 +46,7 @@ export function buildEmailRequest(
       environment: oneLine(incident.environment, 120),
       summary: oneLine(incident.summary || incident.alertName, 300),
       ...(incident.impact ? { impact: oneLine(incident.impact, 400) } : {}),
-      ...(steps.length && incident.firing ? { firstSteps: steps } : {}),
+      ...(incident.serviceUrl ? { serviceUrl: incident.serviceUrl } : {}),
       startedAt: incident.startsAt.toISOString(),
       ...(incident.endsAt ? { endedAt: incident.endsAt.toISOString() } : {}),
       actionUrl,
