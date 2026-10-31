@@ -18,5 +18,10 @@
     "name": "messenger",
     "service": "messenger",
     "url": "https://messenger.solarianetwork.site/actuator/health"
+  },
+  {
+    "name": "api-email",
+    "service": "email",
+    "url": "https://email.solarianetwork.site/health"
   }
 ]

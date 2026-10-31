@@ -61,7 +61,8 @@
     "ai-validation": "https://validation.solarianetwork.site",
     "grafana": "https://grafana.solarianetwork.site",
     "argocd": "https://argocd.solarianetwork.site",
-    "web-app": "https://solarianetwork.site"
+    "web-app": "https://solarianetwork.site",
+    "email": "https://email.solarianetwork.site"
   },
   "names": {
     "core": "api-core",
