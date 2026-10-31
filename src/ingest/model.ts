@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AlertsConfig } from "../config";
-import { resolveTarget, serviceUrl } from "../routing/routing";
+import { resolveTarget, serviceFullName, serviceUrl } from "../routing/routing";
 import type { GrafanaAlert, Priority } from "./schema";
 
 export const jiraPriorities: Record<Priority, string> = {
@@ -24,6 +24,7 @@ export interface Incident {
   environment: string;
   priority: Priority;
   jiraPriority: string;
+  serviceFullName: string;
   serviceUrl?: string;
   jiraProject: string;
   jiraIssueType: string;
@@ -138,6 +139,7 @@ export function toIncident(
     environment: labels.deployment_environment,
     priority: labels.priority,
     jiraPriority: jiraPriorities[labels.priority],
+    serviceFullName: serviceFullName(config.routing, labels.service_name),
     serviceUrl: serviceUrl(config.routing, labels.service_name),
     jiraProject: target.project,
     jiraIssueType: target.issueType,

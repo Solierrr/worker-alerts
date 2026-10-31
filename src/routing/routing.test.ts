@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseRouting, resolveTarget, serviceUrl } from "./routing";
+import {
+  parseRouting,
+  resolveTarget,
+  serviceFullName,
+  serviceUrl,
+} from "./routing";
 
 describe("routing", () => {
   const routing = parseRouting();
@@ -25,6 +30,13 @@ describe("routing", () => {
     expect(serviceUrl(routing, "web-app")).toBe("https://solarianetwork.site");
     expect(serviceUrl(routing, "google-registry")).toBeUndefined();
     expect(serviceUrl(routing, "feeddb")).toBeUndefined();
+  });
+  it("writes the service in full, falling back to the telemetry name", () => {
+    expect(serviceFullName(routing, "core")).toBe("api-core");
+    expect(serviceFullName(routing, "google-registry")).toBe("api-google");
+    expect(serviceFullName(routing, "ai-assistant")).toBe("ai-assistant");
+    expect(serviceFullName(routing, "web-app")).toBe("web-app");
+    expect(serviceFullName(routing, "feeddb")).toBe("feeddb");
   });
   it("only accepts https addresses", () => {
     expect(() =>
