@@ -10,6 +10,8 @@
     "auth": "DEV",
     "messenger": "DEV",
     "notify": "DEV",
+    "api-notify": "DEV",
+    "google-registry": "DEV",
     "email": "DEV",
     "google": "DEV",
     "recommendation": "DEV",
