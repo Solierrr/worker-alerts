@@ -11,7 +11,7 @@ Roda fora do cluster de propósito: se o GKE cair ou for pausado, o aviso contin
 - `GET /health`: resposta pública.
 - `POST /heartbeat` e `POST /monitor/run`: batida do Grafana Cloud e verificação sob demanda (mesmo bearer).
 
-Ainda não existem: e-mail pelo `api-email` e WhatsApp. Eles entram nas próximas etapas.
+Ainda não existe: o WhatsApp, que depende da aprovação do template na Meta.
 
 ## como funciona
 
@@ -39,6 +39,12 @@ O contrato dos alertas exige os rótulos `alert_id`, `priority` (P1 a P5), `serv
 
 O rótulo opcional `silence_on_pause="true"` marca um alerta de "serviço sem dados": enquanto `ephemerality.json` do `infra-platform` marca o cluster inativo, e por 30 minutos depois que ele volta (os serviços levam alguns minutos para mandar métrica de novo), o disparo não abre ticket e a resposta traz `skipped_pause`. O resolvido passa sempre, para fechar o que ficou aberto. Alerta sem o rótulo nunca é silenciado.
 
+## e-mail
+
+Melhor esforço, ligado só quando `EMAIL_API_URL`, `EMAIL_SERVICE_KEY` e `ALERT_EMAIL_TO` são válidos. O Worker chama `POST /emails` do `api-email` com o modelo `operational-alert` (um destinatário por chamada, `X-Service-Key`), já com o resumo, o impacto e os primeiros passos prontos; o `api-email` só aplica o layout e entrega. Como o aviso passa pelo cluster, ele não sai com o cluster caído; Jira e heartbeat não dependem disso.
+
+O e-mail acompanha o ticket, não cada repetição do Grafana: sai quando um ticket novo é criado e quando o fim do incidente é registrado, só para P1 e P2 e nunca para alerta de teste (`test=true`). Falha do e-mail não derruba o webhook e vem em `email.failed` na resposta. A origem do link do dashboard (`ALERT_GRAFANA_URL`) precisa estar em `EMAIL_ALLOWED_ORIGINS` do `api-email`.
+
 ## heartbeat e sonda
 
 Dois verificadores cobrem o caso em que ninguém avisa que o aviso parou. Um Cron Trigger roda a cada 5 minutos (`*/5 * * * *`); `POST /monitor/run`, com o mesmo bearer, roda na hora e devolve o resultado.
@@ -57,6 +63,7 @@ src/
   ingest/             token, schema do webhook e normalização para Incident
   incident/           regras do ticket, textos e o Durable Object
   channels/jira/      cliente do Jira e montagem do corpo em ADF
+  channels/email/     chamada ao api-email e regra de quando o e-mail sai
   monitor/            heartbeat, sonda, estado e lista de alvos
   routing/            tabela serviço para espaço do Jira
 test/support.ts       dados e configuração de teste
@@ -66,13 +73,14 @@ test/support.ts       dados e configuração de teste
 
 As variáveis comuns ficam em `wrangler.jsonc`. Os segredos entram no Worker pelo Terraform (`infra-platform`), copiados da pasta `/alerts` do Infisical; o Worker não consulta o Infisical em execução. Para desenvolver, copie `.dev.vars.example` para `.dev.vars`.
 
-| Variável                                                              | Origem     | Uso                                           |
-| --------------------------------------------------------------------- | ---------- | --------------------------------------------- |
-| `WEBHOOK_TOKEN`                                                       | segredo    | token bearer que o Grafana envia              |
-| `JIRA_BASE_URL`, `JIRA_USER`, `JIRA_API_TOKEN`                        | segredo    | site, conta de serviço e token de API do Jira |
-| `ALERT_GRAFANA_URL`                                                   | segredo    | base dos links do ticket                      |
-| `ALERT_ENVIRONMENT`                                                   | `wrangler` | ambiente que gera ticket, `prod`              |
-| `ALERT_MIN_INTERVAL_MIN`, `ALERT_MAX_PER_24H`, `ALERT_LOG_WINDOW_MIN` | `wrangler` | 30, 8 e 30                                    |
+| Variável                                                              | Origem     | Uso                                                    |
+| --------------------------------------------------------------------- | ---------- | ------------------------------------------------------ |
+| `WEBHOOK_TOKEN`                                                       | segredo    | token bearer que o Grafana envia                       |
+| `JIRA_BASE_URL`, `JIRA_USER`, `JIRA_API_TOKEN`                        | segredo    | site, conta de serviço e token de API do Jira          |
+| `EMAIL_API_URL`, `EMAIL_SERVICE_KEY`, `ALERT_EMAIL_TO`                | segredo    | api-email, chave do Worker e destinatários (opcionais) |
+| `ALERT_GRAFANA_URL`                                                   | segredo    | base dos links do ticket                               |
+| `ALERT_ENVIRONMENT`                                                   | `wrangler` | ambiente que gera ticket, `prod`                       |
+| `ALERT_MIN_INTERVAL_MIN`, `ALERT_MAX_PER_24H`, `ALERT_LOG_WINDOW_MIN` | `wrangler` | 30, 8 e 30                                             |
 
 O canal do Jira só liga quando todas as suas variáveis são válidas; sem elas, `POST /grafana` responde 503 `CHANNEL_NOT_CONFIGURED`.
 

@@ -4,3 +4,7 @@ ALERT_GRAFANA_URL=https://grafana.solarianetwork.site
 JIRA_BASE_URL=https://example.atlassian.net
 JIRA_USER=
 JIRA_API_TOKEN=
+# E-mail (opcional): api-email, chave de serviço do Worker e destinatários separados por vírgula
+EMAIL_API_URL=
+EMAIL_SERVICE_KEY=
+ALERT_EMAIL_TO=

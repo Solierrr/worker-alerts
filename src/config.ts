@@ -7,6 +7,12 @@ export interface JiraConfig {
   apiToken: string;
 }
 
+export interface EmailConfig {
+  apiUrl: string;
+  serviceKey: string;
+  recipients: string[];
+}
+
 export interface AlertsConfig {
   environment: string;
   grafanaUrl?: string;
@@ -15,6 +21,7 @@ export interface AlertsConfig {
   logWindowMin: number;
   routing: Routing;
   jira?: JiraConfig;
+  email?: EmailConfig;
 }
 
 const positive = z.coerce.number().int().positive();
@@ -34,6 +41,22 @@ const jiraSchema = z.object({
   JIRA_API_TOKEN: text,
 });
 
+// O e-mail liga só com os três valores: o endereço do api-email, a chave de serviço do Worker e a
+// lista de destinatários (separados por vírgula ou ponto e vírgula)
+const emailSchema = z.object({
+  EMAIL_API_URL: z.url(),
+  EMAIL_SERVICE_KEY: text,
+  ALERT_EMAIL_TO: z
+    .string()
+    .transform((value) =>
+      value
+        .split(/[;,]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.email()).min(1).max(20)),
+});
+
 function present(env: Record<string, unknown>) {
   return Object.fromEntries(
     Object.entries(env).filter(
@@ -48,6 +71,7 @@ export function loadConfig(env: Env): AlertsConfig {
   const source = present(env as unknown as Record<string, unknown>);
   const base = envSchema.parse(source);
   const jira = jiraSchema.safeParse(source);
+  const email = emailSchema.safeParse(source);
   return {
     environment: base.ALERT_ENVIRONMENT,
     grafanaUrl: base.ALERT_GRAFANA_URL?.replace(/\/+$/, ""),
@@ -55,6 +79,13 @@ export function loadConfig(env: Env): AlertsConfig {
     maxPer24h: base.ALERT_MAX_PER_24H,
     logWindowMin: base.ALERT_LOG_WINDOW_MIN,
     routing: parseRouting(),
+    email: email.success
+      ? {
+          apiUrl: email.data.EMAIL_API_URL.replace(/\/+$/, ""),
+          serviceKey: email.data.EMAIL_SERVICE_KEY,
+          recipients: email.data.ALERT_EMAIL_TO,
+        }
+      : undefined,
     jira: jira.success
       ? {
           baseUrl: jira.data.JIRA_BASE_URL.replace(/\/+$/, ""),
