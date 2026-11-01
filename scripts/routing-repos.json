@@ -11,5 +11,7 @@
   "ai-geographic",
   "ai-operational",
   "ai-validation",
-  "web-app"
+  "web-app",
+  "mcp-database",
+  "database-bootstrap"
 ]

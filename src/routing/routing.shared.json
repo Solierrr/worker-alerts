@@ -1,9 +1,7 @@
 {
   "services": {
-    "mcp-database": "AI",
     "feeddb": "DB",
     "grafana-cloud": "DB",
-    "database-bootstrap": "DB",
     "kong": "DB",
     "cluster": "DB",
     "grafana": "DB",
