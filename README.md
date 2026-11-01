@@ -33,7 +33,7 @@ Regras do ticket:
 
 Cada serviço tem um espaço do Jira (`DEV`, `DB` ou `AI`) e o tipo de issue desse espaço (`Critic`). A tabela fica em `src/routing/routing.json`: `services` liga o `service_name` do alerta ao espaço, e um serviço que não está na tabela cai em `default`. Infraestrutura (`feeddb`, `kong`, `cluster`, `grafana`, `argocd`) fica no `DB`. O espaço do Hub não recebe alertas. Os espaços são projetos team-managed, então o Worker não usa campos personalizados: o fim do incidente é o rótulo `inc-resolvido`.
 
-Para mudar o destino de um serviço, edite `services` e abra um PR; `parseRouting` recusa uma tabela que cite um espaço sem tipo de issue.
+O destino de cada serviço mora no `alerts.json` da raiz do repositório dele (`service`, `aliases`, `project` e `host` opcional). `npm run routing:sync` lê esses arquivos da `main` de cada repositório (lista em `scripts/routing-repos.json`, pela CLI `gh`) e grava `routing.json`; `npm run routing:check` falha se o snapshot estiver desatualizado. O que não tem repositório (`feeddb`, `kong`, `cluster`, `grafana`, `argocd` e afins) fica em `src/routing/routing.shared.json`. Para mudar o destino de um serviço, edite o `alerts.json` dele, rode o sync aqui e abra um PR; `parseRouting` recusa uma tabela que cite um espaço sem tipo de issue.
 
 O contrato dos alertas exige os rótulos `alert_id`, `priority` (P1 a P5), `service_name` e `deployment_environment`. A cadência dos avisos fica na política de notificação do Grafana.
 
