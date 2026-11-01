@@ -92,6 +92,7 @@ describe("telegram sending", () => {
     );
     expect(outcome).toEqual({ sent: 0, failed: 2 });
     expect(JSON.stringify(log.mock.calls)).toContain("chat not found");
+    expect(JSON.stringify(log.mock.calls)).toMatch(/\\"ms\\":\d+/);
     expect(JSON.stringify(log.mock.calls)).not.toContain("token-for-the-tests");
     log.mockRestore();
   });

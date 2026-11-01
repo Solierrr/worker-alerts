@@ -42,6 +42,7 @@ export async function sendTelegramAlert(
   const text = buildTelegramText(incident, fallbackUrl);
   await Promise.all(
     config.chatIds.map(async (chatId) => {
+      const started = Date.now();
       try {
         const response = await fetchFn(
           `https://api.telegram.org/bot${config.botToken}/sendMessage`,
@@ -72,6 +73,7 @@ export async function sendTelegramAlert(
             code: "TELEGRAM_REQUEST_FAILED",
             status: response.status,
             description: body.description,
+            ms: Date.now() - started,
           }),
         );
       } catch (error) {
@@ -81,6 +83,8 @@ export async function sendTelegramAlert(
           JSON.stringify({
             code: "TELEGRAM_REQUEST_FAILED",
             name: error instanceof Error ? error.name : "unknown",
+            // Tempo até a falha: perto de 8000 é o timeout, bem menos é a conexão recusada
+            ms: Date.now() - started,
           }),
         );
       }
