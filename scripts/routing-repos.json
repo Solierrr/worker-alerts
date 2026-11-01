@@ -1,0 +1,15 @@
+[
+  "api-auth",
+  "api-core",
+  "api-messenger",
+  "api-notify",
+  "api-recommendation",
+  "api-email",
+  "api-google",
+  "ai-assistant",
+  "ai-accessibility",
+  "ai-geographic",
+  "ai-operational",
+  "ai-validation",
+  "web-app"
+]

@@ -1,0 +1,18 @@
+{
+  "services": {
+    "mcp-database": "AI",
+    "feeddb": "DB",
+    "grafana-cloud": "DB",
+    "database-bootstrap": "DB",
+    "kong": "DB",
+    "cluster": "DB",
+    "grafana": "DB",
+    "otel-collector": "DB",
+    "argocd": "DB"
+  },
+  "hosts": {
+    "grafana": "https://grafana.solarianetwork.site",
+    "argocd": "https://argocd.solarianetwork.site"
+  },
+  "names": {}
+}

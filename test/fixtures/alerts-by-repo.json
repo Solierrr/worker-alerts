@@ -1,0 +1,79 @@
+{
+  "api-auth": {
+    "service": "api-auth",
+    "aliases": ["auth"],
+    "project": "DEV",
+    "host": "https://auth.solarianetwork.site"
+  },
+  "api-core": {
+    "service": "api-core",
+    "aliases": ["core"],
+    "project": "DEV",
+    "host": "https://core.solarianetwork.site"
+  },
+  "api-messenger": {
+    "service": "api-messenger",
+    "aliases": ["messenger"],
+    "project": "DEV",
+    "host": "https://messenger.solarianetwork.site"
+  },
+  "api-notify": {
+    "service": "api-notify",
+    "aliases": ["notify", "api-notify"],
+    "project": "DEV",
+    "host": "https://notify.solarianetwork.site"
+  },
+  "api-recommendation": {
+    "service": "api-recommendation",
+    "aliases": ["recommendation"],
+    "project": "DEV",
+    "host": "https://recommendation.solarianetwork.site"
+  },
+  "api-email": {
+    "service": "api-email",
+    "aliases": ["email"],
+    "project": "DEV",
+    "host": "https://email.solarianetwork.site"
+  },
+  "google-registry": {
+    "service": "api-google",
+    "aliases": ["google", "google-registry"],
+    "project": "DEV"
+  },
+  "ai-assistant": {
+    "service": "ai-assistant",
+    "aliases": ["assistant", "ai-assistant"],
+    "project": "AI",
+    "host": "https://assistant.solarianetwork.site"
+  },
+  "ai-accessibility": {
+    "service": "ai-accessibility",
+    "aliases": ["accessibility", "ai-accessibility"],
+    "project": "AI",
+    "host": "https://accessibility.solarianetwork.site"
+  },
+  "ai-geographic": {
+    "service": "ai-geographic",
+    "aliases": ["geographic", "ai-geographic"],
+    "project": "AI",
+    "host": "https://geographic.solarianetwork.site"
+  },
+  "ai-operational": {
+    "service": "ai-operational",
+    "aliases": ["operational", "ai-operational"],
+    "project": "AI",
+    "host": "https://operational.solarianetwork.site"
+  },
+  "ai-validation": {
+    "service": "ai-validation",
+    "aliases": ["validation", "ai-validation"],
+    "project": "AI",
+    "host": "https://validation.solarianetwork.site"
+  },
+  "web-app": {
+    "service": "web-app",
+    "aliases": ["web-app"],
+    "project": "DEV",
+    "host": "https://solarianetwork.site"
+  }
+}
