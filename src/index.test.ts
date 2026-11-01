@@ -347,6 +347,24 @@ describe("e-mail after the ticket", () => {
       email: { sent: 0, failed: 1 },
     });
   });
+  it("delivers to Telegram under the same rule and reports it", async () => {
+    const chat = vi.fn(async () => ({ sent: 1, failed: 0 }));
+    const response = await post(
+      createApp(created, idle as never, vi.fn(), chat),
+      "/grafana",
+      grafanaPayload(),
+      {},
+      {
+        ...env,
+        TELEGRAM_BOT_TOKEN: "123:abc",
+        TELEGRAM_CHAT_ID: "-1001",
+      } as Env,
+    );
+    expect(chat).toHaveBeenCalledTimes(1);
+    const body = await response.json();
+    expect(body).toMatchObject({ telegram: { sent: 1, failed: 0 } });
+    expect(body).not.toHaveProperty("email");
+  });
   it("is silent about e-mail when the channel is not configured", async () => {
     const deliver = vi.fn();
     const response = await post(

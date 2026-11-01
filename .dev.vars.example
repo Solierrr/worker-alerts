@@ -8,3 +8,6 @@ JIRA_API_TOKEN=
 EMAIL_API_URL=
 EMAIL_SERVICE_KEY=
 ALERT_EMAIL_TO=
+# Telegram (opcional): token do bot (BotFather) e chats separados por vírgula (id numérico ou @canal)
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
