@@ -31,5 +31,10 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      - name: Check the routing snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run routing:check
+
       - name: Run tests
         run: npm test
