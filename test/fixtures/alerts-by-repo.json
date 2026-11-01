@@ -75,5 +75,15 @@
     "aliases": ["web-app"],
     "project": "DEV",
     "host": "https://solarianetwork.site"
+  },
+  "mcp-database": {
+    "service": "mcp-database",
+    "aliases": ["mcp-database"],
+    "project": "DB"
+  },
+  "database-bootstrap": {
+    "service": "database-bootstrap",
+    "aliases": ["database-bootstrap"],
+    "project": "DB"
   }
 }
