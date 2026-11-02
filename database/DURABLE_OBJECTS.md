@@ -27,14 +27,14 @@ Esse objeto não grava histórico ou chave de ticket no storage. A deduplicaçã
 
 O binding `MONITOR` usa uma única instância com nome `main`. Os instantes são números em milissegundos desde o epoch.
 
-| Chave armazenada | Conteúdo | Quem escreve e lê |
-|---|---|---|
-| `heartbeat` | Última batida recebida | `/heartbeat` escreve, monitor lê |
-| `baseline` | Instante da primeira verificação | Monitor cria uma vez e consulta nas verificações |
-| `paused` | Último instante em que uma pausa foi observada | Monitor e verificação de pausa do webhook escrevem, webhook lê |
-| `failures:<nome>` | Número de falhas consecutivas por alvo | Monitor incrementa em falha e zera em resposta boa |
-| `open:heartbeat` | Instante de abertura da condição de heartbeat | Monitor cria na falha e remove na recuperação |
-| `open:probe:<nome>` | Instante de abertura da condição da sonda | Monitor cria na falha e remove na recuperação ou pausa |
+| Chave armazenada    | Conteúdo                                       | Quem escreve e lê                                              |
+| ------------------- | ---------------------------------------------- | -------------------------------------------------------------- |
+| `heartbeat`         | Última batida recebida                         | `/heartbeat` escreve, monitor lê                               |
+| `baseline`          | Instante da primeira verificação               | Monitor cria uma vez e consulta nas verificações               |
+| `paused`            | Último instante em que uma pausa foi observada | Monitor e verificação de pausa do webhook escrevem, webhook lê |
+| `failures:<nome>`   | Número de falhas consecutivas por alvo         | Monitor incrementa em falha e zera em resposta boa             |
+| `open:heartbeat`    | Instante de abertura da condição de heartbeat  | Monitor cria na falha e remove na recuperação                  |
+| `open:probe:<nome>` | Instante de abertura da condição da sonda      | Monitor cria na falha e remove na recuperação ou pausa         |
 
 Os nomes dos alvos vêm de [targets.json](https://github.com/Solierrr/worker-alerts/blob/main/src/monitor/targets.json), e o storage não tem TTL, limpeza periódica, índice adicional nem cópia local do conteúdo dos alertas. A pausa não limpa o contador `failures:<nome>`, como mostra a implementação em [state.ts](https://github.com/Solierrr/worker-alerts/blob/main/src/monitor/state.ts).
 

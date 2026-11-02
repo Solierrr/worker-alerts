@@ -10,10 +10,10 @@ O [wrangler.jsonc](https://github.com/Solierrr/worker-alerts/blob/main/wrangler.
 
 As definições versionadas descrevem estes destinos, que estão em operação.
 
-| Ambiente | Acesso e configuração |
-|---|---|
-| Local | Endereço exibido por `wrangler dev`, com `.dev.vars` e estado local dos Durable Objects |
-| Cloudflare | Domínio próprio, variáveis comuns no Wrangler e segredos provisionados externamente |
+| Ambiente   | Acesso e configuração                                                                   |
+| ---------- | --------------------------------------------------------------------------------------- |
+| Local      | Endereço exibido por `wrangler dev`, com `.dev.vars` e estado local dos Durable Objects |
+| Cloudflare | Domínio próprio, variáveis comuns no Wrangler e segredos provisionados externamente     |
 
 O [workflow Deploy](https://github.com/Solierrr/worker-alerts/blob/main/.github/workflows/deploy.yml) é manual, por `workflow_dispatch`. Ele instala com `npm ci --ignore-scripts`, roda os testes e executa `npm run deploy` com `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` dos secrets do repositório. Não há imagem Docker nesse processo.
 
