@@ -20,7 +20,7 @@ const oneLine = (value: string, max: number) =>
   );
 
 // O resumo das regras começa com "servico (ambiente): ", que o e-mail já diz na linha do alerta
-function withoutPrefix(incident: Incident) {
+export function withoutPrefix(incident: Incident) {
   const text = incident.summary || incident.alertName;
   const prefix = `${incident.service} (${incident.environment}): `;
   return text.startsWith(prefix) ? text.slice(prefix.length) : text;

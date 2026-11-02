@@ -7,6 +7,10 @@ import {
   shouldEmail,
   type EmailOutcome,
 } from "./channels/email/client";
+import {
+  sendTelegramAlert,
+  type TelegramOutcome,
+} from "./channels/telegram/client";
 import { toIncident, type Incident } from "./ingest/model";
 import { grafanaWebhookSchema } from "./ingest/schema";
 import { ticketDescription, ticketSummary } from "./incident/content";
@@ -46,6 +50,14 @@ export type DeliverEmail = (
 
 const deliverEmail: DeliverEmail = (config, incident) =>
   sendAlertEmails(config.email!, incident, config.grafanaUrl);
+
+export type DeliverTelegram = (
+  config: AlertsConfig,
+  incident: Incident,
+) => Promise<TelegramOutcome>;
+
+const deliverTelegram: DeliverTelegram = (config, incident) =>
+  sendTelegramAlert(config.telegram!, incident, config.grafanaUrl);
 
 export interface MonitorApi {
   heartbeat(env: Env, at: number): Promise<void>;
@@ -95,6 +107,7 @@ export function createApp(
   handleIncident: HandleIncident = viaCoordinator,
   monitor: MonitorApi = defaultMonitor,
   deliver: DeliverEmail = deliverEmail,
+  deliverChat: DeliverTelegram = deliverTelegram,
 ) {
   const app = new Hono<{ Bindings: Env }>();
 
@@ -253,10 +266,26 @@ export function createApp(
         email.sent += outcome.sent;
         email.failed += outcome.failed;
       }
+    // Telegram: a mesma regra do e-mail (shouldEmail), também melhor esforço
+    const telegram: TelegramOutcome = { sent: 0, failed: 0 };
+    if (config.telegram)
+      for (const { incident, result } of done) {
+        if (!shouldEmail(incident, result)) continue;
+        const outcome = await deliverChat(config, incident).catch(() => ({
+          sent: 0,
+          failed: config.telegram!.chatIds.length,
+        }));
+        telegram.sent += outcome.sent;
+        telegram.failed += outcome.failed;
+      }
     console.log(
       JSON.stringify({ actions: results.map((result) => result.action) }),
     );
-    return c.json({ results, ...(config.email ? { email } : {}) });
+    return c.json({
+      results,
+      ...(config.email ? { email } : {}),
+      ...(config.telegram ? { telegram } : {}),
+    });
   });
 
   app.route("/grafana", webhook);

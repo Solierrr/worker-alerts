@@ -13,6 +13,11 @@ export interface EmailConfig {
   recipients: string[];
 }
 
+export interface TelegramConfig {
+  botToken: string;
+  chatIds: string[];
+}
+
 export interface AlertsConfig {
   environment: string;
   grafanaUrl?: string;
@@ -22,6 +27,7 @@ export interface AlertsConfig {
   routing: Routing;
   jira?: JiraConfig;
   email?: EmailConfig;
+  telegram?: TelegramConfig;
 }
 
 const positive = z.coerce.number().int().positive();
@@ -57,6 +63,26 @@ const emailSchema = z.object({
     .pipe(z.array(z.email()).min(1).max(20)),
 });
 
+// O Telegram liga só com o token do bot (do BotFather) e os chats (id numérico, negativo para grupo,
+// ou @canal), separados por vírgula ou ponto e vírgula
+const telegramSchema = z.object({
+  TELEGRAM_BOT_TOKEN: z.string().regex(/^\d+:[\w-]+$/),
+  TELEGRAM_CHAT_ID: z
+    .string()
+    .transform((value) =>
+      value
+        .split(/[;,]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    )
+    .pipe(
+      z
+        .array(z.string().regex(/^(-?\d+|@\w+)$/))
+        .min(1)
+        .max(20),
+    ),
+});
+
 function present(env: Record<string, unknown>) {
   return Object.fromEntries(
     Object.entries(env).filter(
@@ -72,6 +98,7 @@ export function loadConfig(env: Env): AlertsConfig {
   const base = envSchema.parse(source);
   const jira = jiraSchema.safeParse(source);
   const email = emailSchema.safeParse(source);
+  const telegram = telegramSchema.safeParse(source);
   return {
     environment: base.ALERT_ENVIRONMENT,
     grafanaUrl: base.ALERT_GRAFANA_URL?.replace(/\/+$/, ""),
@@ -84,6 +111,12 @@ export function loadConfig(env: Env): AlertsConfig {
           apiUrl: email.data.EMAIL_API_URL.replace(/\/+$/, ""),
           serviceKey: email.data.EMAIL_SERVICE_KEY,
           recipients: email.data.ALERT_EMAIL_TO,
+        }
+      : undefined,
+    telegram: telegram.success
+      ? {
+          botToken: telegram.data.TELEGRAM_BOT_TOKEN,
+          chatIds: telegram.data.TELEGRAM_CHAT_ID,
         }
       : undefined,
     jira: jira.success
