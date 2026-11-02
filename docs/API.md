@@ -10,13 +10,13 @@ As rotas são definidas em [src/index.ts](https://github.com/Solierrr/worker-ale
 
 Todas as rotas POST exigem `Authorization: Bearer <token>` com o token compartilhado configurado em `WEBHOOK_TOKEN`, e a autenticação não aceita uma sessão JWT da plataforma, enquanto o health é público.
 
-| Método e caminho | Resultado |
-|---|---|
-| `GET /health` | HTTP 200 com `{"status":"ok"}`, sem consultar Jira, e-mail ou aplicações |
-| `POST /grafana` | Processa de um a cinquenta alertas e retorna `results` |
-| `POST /grafana/preview` | Retorna `tickets`, sem chamar Jira ou enviar e-mail |
-| `POST /heartbeat` | Grava o instante atual do recebimento e responde `status` |
-| `POST /monitor/run` | Executa o monitor e retorna heartbeat, idade, pausa, sondas e transições |
+| Método e caminho        | Resultado                                                                |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `GET /health`           | HTTP 200 com `{"status":"ok"}`, sem consultar Jira, e-mail ou aplicações |
+| `POST /grafana`         | Processa de um a cinquenta alertas e retorna `results`                   |
+| `POST /grafana/preview` | Retorna `tickets`, sem chamar Jira ou enviar e-mail                      |
+| `POST /heartbeat`       | Grava o instante atual do recebimento e responde `status`                |
+| `POST /monitor/run`     | Executa o monitor e retorna heartbeat, idade, pausa, sondas e transições |
 
 O webhook e a prévia exigem `application/json` e limitam o corpo a 256 KiB. O limite não é aplicado às duas rotas de monitoramento, que não precisam do corpo para executar.
 
@@ -54,15 +54,15 @@ Os labels opcionais `category` e `escalation_group` organizam e relacionam ticke
 
 O webhook responde 200 com uma ação por alerta processado. A ação explica o efeito sem depender do status HTTP do provedor.
 
-| Ação | Efeito |
-|---|---|
-| `created` | Ticket criado, com `issueKey` e possíveis `warnings` |
-| `skipped_interval` | Ainda não passou o intervalo desde o último ticket |
-| `ceiling_comment` | Teto de tickets em 24 horas atingido, com comentário no último |
-| `ignored_env` | Ambiente diferente do configurado |
-| `skipped_pause` | Disparo marcado para silenciamento durante pausa ou carência |
-| `end_recorded` | Tickets marcados e comentados com a recuperação, sem mudança de status |
-| `no_open_ticket` | Nenhum ticket não marcado como resolvido no histórico consultado |
+| Ação               | Efeito                                                                 |
+| ------------------ | ---------------------------------------------------------------------- |
+| `created`          | Ticket criado, com `issueKey` e possíveis `warnings`                   |
+| `skipped_interval` | Ainda não passou o intervalo desde o último ticket                     |
+| `ceiling_comment`  | Teto de tickets em 24 horas atingido, com comentário no último         |
+| `ignored_env`      | Ambiente diferente do configurado                                      |
+| `skipped_pause`    | Disparo marcado para silenciamento durante pausa ou carência           |
+| `end_recorded`     | Tickets marcados e comentados com a recuperação, sem mudança de status |
+| `no_open_ticket`   | Nenhum ticket não marcado como resolvido no histórico consultado       |
 
 Se o e-mail está configurado, a resposta também contém `email.sent` e `email.failed`, e com o Telegram configurado ela traz `telegram.sent` e `telegram.failed`. O envio elegível ocorre apenas depois que todos os itens do lote terminam sem falha de processamento. Se algum item falha, o webhook responde 503, mesmo que outros itens já tenham alterado o Jira.
 
@@ -72,15 +72,15 @@ A prévia retorna `would_create`, `would_record_end` ou `ignored_env` sem consul
 
 O corpo implementado contém `code`, `message` e, quando aplicável, `errors`, com media type `application/problem+json`. Ele difere do [contrato comum](https://github.com/Solierrr/docs-warehouse/blob/main/docs/standards/ERRORS.md), que exige outros campos. Os códigos específicos ainda não estão no [catálogo central](https://github.com/Solierrr/docs-warehouse/blob/main/docs/standards/ERROR_CODES.md).
 
-| HTTP | Código | Causa |
-|---|---|---|
-| 401 | `UNAUTHENTICATED` | Token ausente, inválido ou não configurado |
-| 413 | `PAYLOAD_TOO_LARGE` | Corpo do webhook ou da prévia acima do limite |
-| 415 | `UNSUPPORTED_MEDIA_TYPE` | Corpo sem media type JSON |
-| 422 | `MALFORMED_REQUEST` | JSON ilegível |
-| 422 | `VALIDATION_FAILED` | Envelope ou alertas fora do schema |
-| 503 | `CHANNEL_NOT_CONFIGURED` | Webhook real sem canal Jira válido |
-| 503 | `JIRA_REQUEST_FAILED` | Falha de processamento de pelo menos um alerta no Jira |
-| 500 | `INTERNAL_ERROR` | Exceção não tratada, inclusive configuração base inválida |
+| HTTP | Código                   | Causa                                                     |
+| ---- | ------------------------ | --------------------------------------------------------- |
+| 401  | `UNAUTHENTICATED`        | Token ausente, inválido ou não configurado                |
+| 413  | `PAYLOAD_TOO_LARGE`      | Corpo do webhook ou da prévia acima do limite             |
+| 415  | `UNSUPPORTED_MEDIA_TYPE` | Corpo sem media type JSON                                 |
+| 422  | `MALFORMED_REQUEST`      | JSON ilegível                                             |
+| 422  | `VALIDATION_FAILED`      | Envelope ou alertas fora do schema                        |
+| 503  | `CHANNEL_NOT_CONFIGURED` | Webhook real sem canal Jira válido                        |
+| 503  | `JIRA_REQUEST_FAILED`    | Falha de processamento de pelo menos um alerta no Jira    |
+| 500  | `INTERNAL_ERROR`         | Exceção não tratada, inclusive configuração base inválida |
 
 As rotas inexistentes usam a resposta padrão do Hono, e o Worker não repete internamente as chamadas ao Jira, deixando a repetição do webhook a cargo do Grafana.

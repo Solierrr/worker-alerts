@@ -25,32 +25,32 @@ flowchart LR
 
 As fontes estão na `main` do repositório.
 
-| Caminho | Papel |
-|---|---|
-| [src/index.ts](https://github.com/Solierrr/worker-alerts/blob/main/src/index.ts) | Rotas Hono, limites de entrada, despacho por incidente e evento agendado |
-| [src/config.ts](https://github.com/Solierrr/worker-alerts/blob/main/src/config.ts) | Validação das variáveis e ativação dos canais |
-| [src/ingest/](https://github.com/Solierrr/worker-alerts/blob/main/src/ingest/model.ts) | Autenticação, schema e normalização do alerta |
-| [src/incident/](https://github.com/Solierrr/worker-alerts/blob/main/src/incident/service.ts) | Intervalos, histórico, conteúdo e recuperação |
-| [src/channels/jira/](https://github.com/Solierrr/worker-alerts/blob/main/src/channels/jira/client.ts) | Jira REST v3 e conteúdo ADF |
-| [src/channels/email/](https://github.com/Solierrr/worker-alerts/blob/main/src/channels/email/client.ts) | Elegibilidade e entrega do e-mail |
-| [src/channels/telegram/](https://github.com/Solierrr/worker-alerts/blob/main/src/channels/telegram/client.ts) | Texto e envio do aviso pelo bot do Telegram |
-| [src/monitor/](https://github.com/Solierrr/worker-alerts/blob/main/src/monitor/monitor.ts) | Heartbeat, sondas e estado do cluster |
-| [src/routing/](https://github.com/Solierrr/worker-alerts/blob/main/src/routing/routing.ts) | Snapshot de destinos, nomes e hosts |
+| Caminho                                                                                                       | Papel                                                                    |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [src/index.ts](https://github.com/Solierrr/worker-alerts/blob/main/src/index.ts)                              | Rotas Hono, limites de entrada, despacho por incidente e evento agendado |
+| [src/config.ts](https://github.com/Solierrr/worker-alerts/blob/main/src/config.ts)                            | Validação das variáveis e ativação dos canais                            |
+| [src/ingest/](https://github.com/Solierrr/worker-alerts/blob/main/src/ingest/model.ts)                        | Autenticação, schema e normalização do alerta                            |
+| [src/incident/](https://github.com/Solierrr/worker-alerts/blob/main/src/incident/service.ts)                  | Intervalos, histórico, conteúdo e recuperação                            |
+| [src/channels/jira/](https://github.com/Solierrr/worker-alerts/blob/main/src/channels/jira/client.ts)         | Jira REST v3 e conteúdo ADF                                              |
+| [src/channels/email/](https://github.com/Solierrr/worker-alerts/blob/main/src/channels/email/client.ts)       | Elegibilidade e entrega do e-mail                                        |
+| [src/channels/telegram/](https://github.com/Solierrr/worker-alerts/blob/main/src/channels/telegram/client.ts) | Texto e envio do aviso pelo bot do Telegram                              |
+| [src/monitor/](https://github.com/Solierrr/worker-alerts/blob/main/src/monitor/monitor.ts)                    | Heartbeat, sondas e estado do cluster                                    |
+| [src/routing/](https://github.com/Solierrr/worker-alerts/blob/main/src/routing/routing.ts)                    | Snapshot de destinos, nomes e hosts                                      |
 
 ## Integrações
 
 Cada entrada tem seu próprio mecanismo de autenticação.
 
-| Origem | Destino | Protocolo e autenticação | Finalidade |
-|---|---|---|---|
-| Grafana Cloud | Worker | HTTPS com Bearer compartilhado | Alertas e heartbeat |
-| Operação | Worker | HTTPS com o mesmo Bearer | Prévia e monitoramento manual |
-| Worker | Jira | HTTPS REST v3 com Basic da conta de serviço e token | Buscar, criar, comentar, relacionar e marcar tickets |
-| Worker | `api-email` | HTTPS com `X-Service-Key` | E-mail opcional após o ticket |
-| Worker | Telegram | HTTPS com o token do bot | Aviso opcional após o ticket, fora do cluster |
-| Worker | `infra-platform` | HTTPS público, sem credencial | Ler `ephemerality.json` na `main` |
-| Worker | Alvos da sonda | HTTPS público, sem credencial | Conferir respostas HTTP |
-| Script de sincronização | GitHub | API pela sessão da CLI `gh` | Ler `alerts.json` dos serviços |
+| Origem                  | Destino          | Protocolo e autenticação                            | Finalidade                                           |
+| ----------------------- | ---------------- | --------------------------------------------------- | ---------------------------------------------------- |
+| Grafana Cloud           | Worker           | HTTPS com Bearer compartilhado                      | Alertas e heartbeat                                  |
+| Operação                | Worker           | HTTPS com o mesmo Bearer                            | Prévia e monitoramento manual                        |
+| Worker                  | Jira             | HTTPS REST v3 com Basic da conta de serviço e token | Buscar, criar, comentar, relacionar e marcar tickets |
+| Worker                  | `api-email`      | HTTPS com `X-Service-Key`                           | E-mail opcional após o ticket                        |
+| Worker                  | Telegram         | HTTPS com o token do bot                            | Aviso opcional após o ticket, fora do cluster        |
+| Worker                  | `infra-platform` | HTTPS público, sem credencial                       | Ler `ephemerality.json` na `main`                    |
+| Worker                  | Alvos da sonda   | HTTPS público, sem credencial                       | Conferir respostas HTTP                              |
+| Script de sincronização | GitHub           | API pela sessão da CLI `gh`                         | Ler `alerts.json` dos serviços                       |
 
 O token de entrada é validado por comparação de hashes SHA-256 em tempo constante. Sem token configurado ou recebido, o acesso protegido é recusado. Essa entrada não usa JWT nem `X-Service-Key`. O contexto comum das chamadas entre serviços está em [autenticação entre serviços](https://github.com/Solierrr/docs-warehouse/blob/main/docs/flows/SERVICE_TO_SERVICE_AUTH.md).
 
