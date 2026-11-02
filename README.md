@@ -1,108 +1,39 @@
-# worker alerts
+<p align="center">
+  <img src="./assets/readme/banners/hono.png" alt="Hono" width="100%">
+</p>
 
-Worker do Cloudflare que recebe os alertas do Grafana Cloud e os transforma em incidentes no Jira. Ele cuida só dos alertas operacionais da plataforma; as notificações do marketplace continuam fora deste repositório.
+<p align="center">
+  <img src="./assets/readme/stacks/typescript.png" width="100" hspace="8" alt="TypeScript" title="TypeScript">
+  <img src="./assets/readme/stacks/zod.png" width="100" hspace="8" alt="Zod" title="Zod">
+  <img src="./assets/readme/stacks/cloudflare.png" width="100" hspace="8" alt="Cloudflare" title="Cloudflare">
+  <img src="./assets/readme/stacks/jira.png" width="100" hspace="8" alt="Jira" title="Jira">
+  <img src="./assets/readme/stacks/telegram.png" width="100" hspace="8" alt="Telegram" title="Telegram">
+</p>
 
-Roda fora do cluster de propósito: se o GKE cair ou for pausado, o aviso continua saindo. A decisão e as alternativas descartadas estão em `decisoes-de-infra.md` (D30), no VersioSpec.
+# Central de alertas operacionais
 
-## o que existe nesta versão
+[![License](https://img.shields.io/github/license/Solierrr/worker-alerts)](https://github.com/Solierrr/worker-alerts/blob/main/LICENSE)
+[![GitHub Last Commit](https://img.shields.io/github/last-commit/Solierrr/worker-alerts)](https://github.com/Solierrr/worker-alerts/commits)
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/Solierrr/worker-alerts)](https://github.com/Solierrr/worker-alerts/pulls)
+[![Release](https://img.shields.io/github/v/release/Solierrr/worker-alerts)](https://github.com/Solierrr/worker-alerts/releases)
 
-- `POST /grafana`: recebe o webhook do Grafana e cria, comenta ou fecha o fim do incidente no Jira.
-- `POST /grafana/preview`: mostra o ticket que seria criado, sem contato com o Jira.
-- `GET /health`: resposta pública.
-- `POST /heartbeat` e `POST /monitor/run`: batida do Grafana Cloud e verificação sob demanda (mesmo bearer).
+Este serviço transforma os alertas de monitoramento da plataforma em incidentes registrados para a equipe, para que um problema em produção vire uma tarefa com responsável em vez de uma mensagem que ninguém acompanha. Cada alerta chega a um quadro de trabalho conforme o serviço afetado, e a equipe recebe também um e-mail e uma mensagem no Telegram quando o problema é grave. O serviço roda fora do cluster de propósito, para que o aviso continue saindo mesmo quando o próprio cluster cai ou é desligado.
 
-O aviso rápido vai pelo Telegram (bot), no lugar do WhatsApp, que a Meta só libera para empresa verificada.
+O Grafana Cloud envia os alertas por webhook, autenticado com um token próprio, e o Worker valida cada envio com Zod antes de abrir, comentar ou registrar o fim de um incidente no Jira. Um Durable Object da Cloudflare organiza os avisos de um mesmo incidente em fila, para que dois avisos quase simultâneos não criem dois tickets. Uma tarefa agendada a cada cinco minutos confere se o monitoramento continua mandando sinal e consulta a saúde dos principais serviços, e os avisos dos incidentes graves saem pelo serviço de e-mail da plataforma e por um bot do Telegram.
 
-## como funciona
+## Aprofunde-se no Projeto!
 
-1. O Grafana envia o webhook com `Authorization: Bearer <token>`.
-2. O Worker valida o token (comparação em tempo constante), o tamanho (256 KiB) e o formato do payload.
-3. Cada alerta vira um incidente com chave estável (SHA-1 de alerta, serviço e ambiente).
-4. Um Durable Object por chave serializa os webhooks do mesmo incidente, para duas chamadas quase simultâneas não criarem dois tickets.
-5. O Jira é o estado: o Worker consulta por rótulo (`inc-key-…`) antes de criar.
+- [OVERVIEW.md](./docs/OVERVIEW.md), o que o serviço faz e as regras de cada incidente.
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md), organização do código, integrações e decisões técnicas.
+- [RUNNING.md](./docs/RUNNING.md), como executar e testar localmente.
+- [API.md](./docs/API.md), como o monitoramento chama o serviço.
+- [DEPLOY.md](./docs/DEPLOY.md), domínio, segredos e publicação.
+- [STATUS.md](./docs/STATUS.md), o que já funciona e o que falta.
+- [DURABLE_OBJECTS.md](./database/DURABLE_OBJECTS.md), o estado guardado pelos monitores e a coordenação de cada incidente.
+- [Fluxos](./flows/), o recebimento do alerta, o registro da recuperação, a verificação independente e a sincronização das rotas.
 
-Regras do ticket:
+## Contribuindo
 
-- `firing` cria um ticket novo se o último do mesmo alerta, serviço e ambiente tem pelo menos `ALERT_MIN_INTERVAL_MIN` minutos e se houve menos de `ALERT_MAX_PER_24H` em 24 horas. No teto, só comenta no último.
-- `resolved` adiciona o rótulo `inc-resolvido` e comenta com a duração. O Worker nunca muda o status nem fecha o ticket.
-- Falha ao consultar ou criar no Jira responde 503, e o Grafana tenta de novo.
-- Alertas de outro ambiente que não `ALERT_ENVIRONMENT` são ignorados.
-- Alerta com o rótulo `test=true` cria o ticket com o label `teste` e o prefixo `[TESTE]`.
-
-## para onde o ticket vai
-
-Cada serviço tem um espaço do Jira (`DEV`, `DB` ou `AI`) e o tipo de issue desse espaço (`Critic`). A tabela fica em `src/routing/routing.json`: `services` liga o `service_name` do alerta ao espaço, e um serviço que não está na tabela cai em `default`. Infraestrutura (`feeddb`, `kong`, `cluster`, `grafana`, `argocd`) fica no `DB`. O espaço do Hub não recebe alertas. Os espaços são projetos team-managed, então o Worker não usa campos personalizados: o fim do incidente é o rótulo `inc-resolvido`.
-
-O destino de cada serviço mora no `alerts.json` da raiz do repositório dele (`service`, `aliases`, `project` e `host` opcional). `npm run routing:sync` lê esses arquivos da `main` de cada repositório (lista em `scripts/routing-repos.json`, pela CLI `gh`) e grava `routing.json`; `npm run routing:check` falha se o snapshot estiver desatualizado. O que não tem repositório (`feeddb`, `kong`, `cluster`, `grafana`, `argocd` e afins) fica em `src/routing/routing.shared.json`. Para mudar o destino de um serviço, edite o `alerts.json` dele, rode o sync aqui e abra um PR; `parseRouting` recusa uma tabela que cite um espaço sem tipo de issue.
-
-O contrato dos alertas exige os rótulos `alert_id`, `priority` (P1 a P5), `service_name` e `deployment_environment`. A cadência dos avisos fica na política de notificação do Grafana.
-
-O rótulo opcional `silence_on_pause="true"` marca um alerta de "serviço sem dados": enquanto `ephemerality.json` do `infra-platform` marca o cluster inativo, e por 30 minutos depois que ele volta (os serviços levam alguns minutos para mandar métrica de novo), o disparo não abre ticket e a resposta traz `skipped_pause`. O resolvido passa sempre, para fechar o que ficou aberto. Alerta sem o rótulo nunca é silenciado.
-
-## e-mail
-
-Melhor esforço, ligado só quando `EMAIL_API_URL`, `EMAIL_SERVICE_KEY` e `ALERT_EMAIL_TO` são válidos. O Worker chama `POST /emails` do `api-email` com o modelo `operational-alert` (um destinatário por chamada, `X-Service-Key`), já com o resumo e o impacto prontos e o link do serviço com problema (endereços em `hosts` de `src/routing/routing.json`; serviço interno vai só com o nome); o `api-email` só aplica o layout e entrega. Como o aviso passa pelo cluster, ele não sai com o cluster caído; Jira e heartbeat não dependem disso.
-
-O e-mail acompanha o ticket, não cada repetição do Grafana: sai quando um ticket novo é criado e quando o fim do incidente é registrado, só para P1 e P2 e nunca para alerta de teste (`test=true`). Falha do e-mail não derruba o webhook e vem em `email.failed` na resposta. A origem do link do dashboard (`ALERT_GRAFANA_URL`) precisa estar em `EMAIL_ALLOWED_ORIGINS` do `api-email`.
-
-## telegram
-
-Melhor esforço, ligado só quando `TELEGRAM_BOT_TOKEN` (do [@BotFather](https://t.me/BotFather)) e `TELEGRAM_CHAT_ID` são válidos. Segue a mesma regra do e-mail (ticket novo e fim registrado, só P1 e P2, nunca teste) e chama direto o `sendMessage` da [Bot API](https://core.telegram.org/bots/api#sendmessage), com texto puro e uma chamada por chat. Não passa pelo cluster, então sai mesmo com o GKE fora do ar. Falha não derruba o webhook e vem em `telegram.failed` na resposta; o log leva o status e a `description` do Telegram, nunca o token.
-
-`TELEGRAM_CHAT_ID` aceita o id numérico do chat (negativo para grupo) ou `@canal`, separados por vírgula. Para descobrir o id: adicione o bot ao grupo, mande uma mensagem e abra `https://api.telegram.org/bot<token>/getUpdates` (`message.chat.id`).
-
-## heartbeat e sonda
-
-Dois verificadores cobrem o caso em que ninguém avisa que o aviso parou. Um Cron Trigger roda a cada 5 minutos (`*/5 * * * *`); `POST /monitor/run`, com o mesmo bearer, roda na hora e devolve o resultado.
-
-- **Heartbeat.** Uma regra do Grafana Cloud sempre disparando manda uma batida para `POST /heartbeat` a cada 5 minutos. O Worker guarda a última no Durable Object `MonitorState`. Sem batida há mais de 15 minutos, abre o incidente `H01` (P1, serviço `grafana-cloud`, espaço `DB`). Antes da primeira batida de um deploy novo conta o horário da primeira verificação, para não alertar à toa. É conferido sempre, porque o Grafana Cloud não depende do cluster.
-- **Sonda.** Chama `web-app` (pelo host `origin`), `core`, `auth` e `messenger` (`/actuator/health`) e o `api-email` (`/health`, que também prova o caminho do e-mail); a lista fica em `src/monitor/targets.json`. Uma falha isolada não alerta: depois de 3 falhas seguidas abre o incidente `S01` (P1) no espaço do serviço, e uma resposta boa o resolve. Enquanto `ephemerality.json` do `infra-platform` marca o cluster como inativo, a sonda não roda e fecha o que estava aberto. Se o arquivo não puder ser lido, ela assume o cluster ativo.
-
-Os dois usam o mesmo caminho dos demais alertas: Durable Object por incidente, ticket `Critic` no Jira e rótulo `inc-resolvido` quando volta.
-
-## estrutura
-
-```text
-src/
-  index.ts            rotas (Hono) e exportação do Durable Object
-  config.ts           variáveis do Worker lidas e validadas com zod
-  ingest/             token, schema do webhook e normalização para Incident
-  incident/           regras do ticket, textos e o Durable Object
-  channels/jira/      cliente do Jira e montagem do corpo em ADF
-  channels/email/     chamada ao api-email e regra de quando o e-mail sai
-  channels/telegram/  texto e envio pelo bot do Telegram
-  monitor/            heartbeat, sonda, estado e lista de alvos
-  routing/            tabela serviço para espaço do Jira
-test/support.ts       dados e configuração de teste
-```
-
-## configuração
-
-As variáveis comuns ficam em `wrangler.jsonc`. Os segredos entram no Worker pelo Terraform (`infra-platform`), copiados da pasta `/alerts` do Infisical; o Worker não consulta o Infisical em execução. Para desenvolver, copie `.dev.vars.example` para `.dev.vars`.
-
-| Variável                                                              | Origem     | Uso                                                    |
-| --------------------------------------------------------------------- | ---------- | ------------------------------------------------------ |
-| `WEBHOOK_TOKEN`                                                       | segredo    | token bearer que o Grafana envia                       |
-| `JIRA_BASE_URL`, `JIRA_USER`, `JIRA_API_TOKEN`                        | segredo    | site, conta de serviço e token de API do Jira          |
-| `EMAIL_API_URL`, `EMAIL_SERVICE_KEY`, `ALERT_EMAIL_TO`                | segredo    | api-email, chave do Worker e destinatários (opcionais) |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`                              | segredo    | token do bot e chats que recebem o aviso (opcionais)   |
-| `ALERT_GRAFANA_URL`                                                   | segredo    | base dos links do ticket                               |
-| `ALERT_ENVIRONMENT`                                                   | `wrangler` | ambiente que gera ticket, `prod`                       |
-| `ALERT_MIN_INTERVAL_MIN`, `ALERT_MAX_PER_24H`, `ALERT_LOG_WINDOW_MIN` | `wrangler` | 30, 8 e 30                                             |
-
-O canal do Jira só liga quando todas as suas variáveis são válidas; sem elas, `POST /grafana` responde 503 `CHANNEL_NOT_CONFIGURED`.
-
-## comandos
-
-```bash
-npm ci
-npm run dev          # wrangler dev
-npm test             # vitest dentro do runtime de Workers
-npm run typecheck
-npm run check        # valida o bundle (wrangler deploy --dry-run)
-npm run types        # regera worker-configuration.d.ts depois de mudar o wrangler.jsonc
-```
-
-## deploy
-
-O domínio `alerts.solarianetwork.site`, os segredos e o token do webhook são criados pelo Terraform no `infra-platform`. O código vai para a Cloudflare pelo workflow `Deploy` (manual), que usa os secrets `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` do repositório.
+- [CONTRIBUTING.md](https://github.com/Solierrr/.github/blob/main/.github/CONTRIBUTING.md), convenções de commit, branch e Pull Request.
+- [CODE_OF_CONDUCT.md](https://github.com/Solierrr/.github/blob/main/CODE_OF_CONDUCT.md), código de conduta.
+- [SECURITY.md](https://github.com/Solierrr/.github/blob/main/SECURITY.md), como reportar uma vulnerabilidade.
